@@ -18,7 +18,7 @@ const client = new Client({
 
 client.once("clientReady", async () => {
   console.log(`Login success as ${client.user.tag}`);
-
+  console.log("RelayOnMe build: message-debug-2026-06-29");
   try {
     await initDb();
   } catch (error) {
