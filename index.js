@@ -86,6 +86,63 @@ async function relayCampfireMeetup(parsed, message, client) {
     return;
   }
 
+async function relayOrEditMessage({
+  webhook,
+  parsed,
+  sourceMessage,
+  targetChannelId,
+}) {
+  const existing = await getRelayMessage(parsed.meetupUrl);
+
+  const payload = {
+    content: sourceMessage.content,
+    username: "Campfire",
+    avatarURL: sourceMessage.author.displayAvatarURL(),
+    embeds: sourceMessage.embeds.length ? [sourceMessage.embeds[0]] : [],
+  };
+
+  let sentMessage;
+
+  if (existing?.target_message_id) {
+    try {
+      sentMessage = await webhook.editMessage(existing.target_message_id, payload);
+
+      await saveRelayMessage({
+        meetupUrl: parsed.meetupUrl,
+        targetMessageId: sentMessage.id,
+        targetChannelId,
+        sourceMessageId: parsed.sourceMessageId,
+        sourceChannelId: parsed.sourceChannelId,
+        lastType: parsed.type,
+      });
+
+      console.log("Relay message edited:", sentMessage.id);
+      return sentMessage;
+    } catch (error) {
+      if (error.code !== 10008) {
+        console.error("Failed to edit relay message:", error);
+        throw error;
+      }
+
+      console.warn("Relay target message was deleted. Posting new relay message.");
+    }
+  }
+
+  sentMessage = await webhook.send(payload);
+
+  await saveRelayMessage({
+    meetupUrl: parsed.meetupUrl,
+    targetMessageId: sentMessage.id,
+    targetChannelId,
+    sourceMessageId: parsed.sourceMessageId,
+    sourceChannelId: parsed.sourceChannelId,
+    lastType: parsed.type,
+  });
+
+  console.log("Relay message posted:", sentMessage.id);
+  return sentMessage;
+}
+
 const webhooks = await targetChannel.fetchWebhooks();
   let webhook = webhooks.find((hook) => hook.name === "RelayOnMe Campfire");
 
@@ -96,11 +153,34 @@ const webhooks = await targetChannel.fetchWebhooks();
     });
   }
 
-  const sentMessage = await webhook.send({
-  username: "Campfire",
-  avatarURL: message.author.displayAvatarURL(),
-  content: `📡 Campfire meetup ${parsed.type}`,
-  embeds: [message.embeds[0]],
+const existingRelay = await getRelayMessage(parsed.meetupUrl);
+
+if (existingRelay) {
+  await webhook.editMessage(existingRelay.target_message_id, {
+    username: "Campfire",
+    avatarURL: message.author.displayAvatarURL(),
+    content: message.content,
+    embeds: [message.embeds[0]],
+  });
+
+  await saveRelayMessage({
+    meetupUrl: parsed.meetupUrl,
+    targetMessageId: existingRelay.target_message_id,
+    targetChannelId: targetChannel.id,
+    sourceMessageId: parsed.sourceMessageId,
+    sourceChannelId: parsed.sourceChannelId,
+    lastType: parsed.type,
+  });
+
+  console.log("Existing relay message edited");
+  return;
+}
+
+  await relayOrEditMessage({
+  webhook,
+  parsed,
+  sourceMessage: message,
+  targetChannelId: TARGET_CHANNEL_ID,
 });
 
 await saveRelayMessage({
