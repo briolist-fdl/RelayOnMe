@@ -86,6 +86,24 @@ async function relayCampfireMeetup(parsed, message, client) {
     return;
   }
 
+  const webhooks = await targetChannel.fetchWebhooks();
+  let webhook = webhooks.find((hook) => hook.name === "RelayOnMe Campfire");
+
+  if (!webhook) {
+    webhook = await targetChannel.createWebhook({
+      name: "RelayOnMe Campfire",
+      reason: "RelayOnMe needs a webhook to mirror Campfire meetup posts",
+    });
+  }
+
+  await relayOrEditMessage({
+    webhook,
+    parsed,
+    sourceMessage: message,
+    targetChannelId: targetChannel.id,
+  });
+}
+
 async function relayOrEditMessage({
   webhook,
   parsed,
@@ -94,13 +112,13 @@ async function relayOrEditMessage({
 }) {
   const existing = await getRelayMessage(parsed.meetupUrl);
 
-const payload = {
-  content: sourceMessage.content,
-  username: "Campfire",
-  avatarURL: sourceMessage.author.displayAvatarURL(),
-  embeds: sourceMessage.embeds,
-  components: sourceMessage.components,
-};
+  const payload = {
+    content: sourceMessage.content,
+    username: "Campfire",
+    avatarURL: sourceMessage.author.displayAvatarURL(),
+    embeds: sourceMessage.embeds,
+    components: sourceMessage.components,
+  };
 
   let sentMessage;
 
@@ -143,23 +161,6 @@ const payload = {
   console.log("Relay message posted:", sentMessage.id);
   return sentMessage;
 }
-
-const webhooks = await targetChannel.fetchWebhooks();
-  let webhook = webhooks.find((hook) => hook.name === "RelayOnMe Campfire");
-
-  if (!webhook) {
-    webhook = await targetChannel.createWebhook({
-      name: "RelayOnMe Campfire",
-      reason: "RelayOnMe needs a webhook to mirror Campfire meetup posts",
-    });
-  }
-
-await relayOrEditMessage({
-  webhook,
-  parsed,
-  sourceMessage: message,
-  targetChannelId: targetChannel.id,
-});
 
 client.on("messageCreate", async (message) => {
   try {
