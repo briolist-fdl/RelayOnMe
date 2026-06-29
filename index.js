@@ -1,7 +1,12 @@
 require("dotenv").config();
 
-const { initDb } = require("./initDb");
+
+require("dotenv").config();
+
 const { Client, GatewayIntentBits } = require("discord.js");
+const { initDb } = require("./initDb");
+const { getRelayMessage, saveRelayMessage } = require("./relayMessageStore");
+
 
 const client = new Client({
   intents: [
@@ -89,14 +94,28 @@ const webhooks = await targetChannel.fetchWebhooks();
     });
   }
 
-  await webhook.send({
+  const sentMessage = await webhook.send({
   username: "Campfire",
   avatarURL: message.author.displayAvatarURL(),
   content: `📡 Campfire meetup ${parsed.type}`,
   embeds: [message.embeds[0]],
 });
 
-  console.log("Relayed meetup via webhook");
+await saveRelayMessage({
+  meetupUrl: parsed.meetupUrl,
+  targetMessageId: sentMessage.id,
+  targetChannelId: targetChannel.id,
+  sourceMessageId: parsed.sourceMessageId,
+  sourceChannelId: parsed.sourceChannelId,
+  lastType: parsed.type,
+});
+
+const saved = await getRelayMessage(parsed.meetupUrl);
+
+console.log("Saved row:");
+console.log(saved);
+
+console.log("Relay saved to database");
 }
 
 client.on("messageCreate", async (message) => {
