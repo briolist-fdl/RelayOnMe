@@ -162,23 +162,27 @@ await relayOrEditMessage({
 });
 
 client.on("messageCreate", async (message) => {
-  if (message.channel.id !== process.env.SOURCE_CHANNEL_ID) return;
+  try {
+    if (message.channel.id !== process.env.SOURCE_CHANNEL_ID) return;
 
-console.log(
-  `MESSAGE: ${message.author.tag} | ${message.channel.id} | ${message.content}`
-);
+    console.log(
+      `MESSAGE: ${message.author.tag} | ${message.channel.id} | ${message.content}`
+    );
 
-  const parsed = parseCampfireMessage(message);
+    const parsed = parseCampfireMessage(message);
 
-  if (!parsed) {
-    console.log("Ignored source message");
-    return;
+    if (!parsed) {
+      console.log("Ignored source message");
+      return;
+    }
+
+    console.log("PARSED CAMPFIRE MEETUP");
+    console.log(parsed);
+
+    await relayCampfireMeetup(parsed, message, client);
+  } catch (error) {
+    console.error("messageCreate handler failed:", error);
   }
-
-  console.log("PARSED CAMPFIRE MEETUP");
-console.log(parsed);
-
-await relayCampfireMeetup(parsed, message, client);
 });
 
 client.login(process.env.DISCORD_TOKEN);
