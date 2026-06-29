@@ -1,19 +1,18 @@
 require("dotenv").config();
 
-
-require("dotenv").config();
-
 const { Client, GatewayIntentBits } = require("discord.js");
 const { initDb } = require("./initDb");
 const { getRelayMessage, saveRelayMessage } = require("./relayMessageStore");
 
+const CAMPFIRE_BOT_ID = "1224759021609685132";
+const WEBHOOK_NAME = "RelayOnMe Campfire";
 
 const client = new Client({
   intents: [
-  GatewayIntentBits.Guilds,
-  GatewayIntentBits.GuildMessages,
-  GatewayIntentBits.MessageContent,
-],
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 client.once("clientReady", async () => {
@@ -21,6 +20,7 @@ client.once("clientReady", async () => {
   console.log("RelayOnMe build: message-debug-2026-06-29");
   console.log("SOURCE_CHANNEL_ID:", process.env.SOURCE_CHANNEL_ID);
   console.log("TARGET_CHANNEL_ID:", process.env.TARGET_CHANNEL_ID);
+
   try {
     await initDb();
   } catch (error) {
@@ -29,8 +29,6 @@ client.once("clientReady", async () => {
 });
 
 function parseCampfireMessage(message) {
-  const CAMPFIRE_BOT_ID = "1224759021609685132";
-
   if (message.author.id !== CAMPFIRE_BOT_ID) return null;
   if (message.embeds.length === 0) return null;
 
@@ -54,27 +52,20 @@ function parseCampfireMessage(message) {
     type = "starting_soon";
   }
 
-  const creatorDiscordUserId = message.mentions.users.first()?.id || null;
-
-  const isCommunityAmbassadorHosted = Object.keys(fields).some((fieldName) =>
-    fieldName.includes("Hosted by a Community Ambassador")
-  );
-
   return {
     type,
     sourceMessageId: message.id,
     sourceChannelId: message.channel.id,
-
     meetupUrl: embed.url,
     title: embed.title || null,
     description: embed.description || null,
-
     starts: fields["🗓️ Starts"] || null,
     ends: fields["🗓️ Ends"] || null,
     location: fields["📍Location"] || null,
-
-    creatorDiscordUserId,
-    isCommunityAmbassadorHosted,
+    creatorDiscordUserId: message.mentions.users.first()?.id || null,
+    isCommunityAmbassadorHosted: Object.keys(fields).some((fieldName) =>
+      fieldName.includes("Hosted by a Community Ambassador")
+    ),
   };
 }
 
@@ -87,38 +78,38 @@ async function relayCampfireMeetup(parsed, message, client) {
   }
 
   const webhooks = await targetChannel.fetchWebhooks();
-  let webhook = webhooks.find((hook) => hook.name === "RelayOnMe Campfire");
+  let webhook = webhooks.find((hook) => hook.name === WEBHOOK_NAME);
 
   if (!webhook) {
     webhook = await targetChannel.createWebhook({
-      name: "RelayOnMe Campfire",
+      name: WEBHOOK_NAME,
       reason: "RelayOnMe needs a webhook to mirror Campfire meetup posts",
     });
   }
 
+  const payload = {
+    content: message.content,
+    username: "Campfire",
+    avatarURL: message.author.displayAvatarURL(),
+    embeds: message.embeds,
+    components: message.components,
+  };
+
   await relayOrEditMessage({
     webhook,
-    parsed,
-    sourceMessage: message,
-    targetChannelId: targetChannel.id,
+    relayKey: parsed.meetupUrl,
+    payload,
+    metadata: {
+      targetChannelId: targetChannel.id,
+      sourceMessageId: parsed.sourceMessageId,
+      sourceChannelId: parsed.sourceChannelId,
+      lastType: parsed.type,
+    },
   });
 }
 
-async function relayOrEditMessage({
-  webhook,
-  parsed,
-  sourceMessage,
-  targetChannelId,
-}) {
-  const existing = await getRelayMessage(parsed.meetupUrl);
-
-  const payload = {
-    content: sourceMessage.content,
-    username: "Campfire",
-    avatarURL: sourceMessage.author.displayAvatarURL(),
-    embeds: sourceMessage.embeds,
-    components: sourceMessage.components,
-  };
+async function relayOrEditMessage({ webhook, relayKey, payload, metadata }) {
+  const existing = await getRelayMessage(relayKey);
 
   let sentMessage;
 
@@ -126,13 +117,10 @@ async function relayOrEditMessage({
     try {
       sentMessage = await webhook.editMessage(existing.target_message_id, payload);
 
-      await saveRelayMessage({
-        meetupUrl: parsed.meetupUrl,
-        targetMessageId: sentMessage.id,
-        targetChannelId,
-        sourceMessageId: parsed.sourceMessageId,
-        sourceChannelId: parsed.sourceChannelId,
-        lastType: parsed.type,
+      await saveRelayMetadata({
+        relayKey,
+        sentMessage,
+        metadata,
       });
 
       console.log("Relay message edited:", sentMessage.id);
@@ -149,17 +137,25 @@ async function relayOrEditMessage({
 
   sentMessage = await webhook.send(payload);
 
-  await saveRelayMessage({
-    meetupUrl: parsed.meetupUrl,
-    targetMessageId: sentMessage.id,
-    targetChannelId,
-    sourceMessageId: parsed.sourceMessageId,
-    sourceChannelId: parsed.sourceChannelId,
-    lastType: parsed.type,
+  await saveRelayMetadata({
+    relayKey,
+    sentMessage,
+    metadata,
   });
 
   console.log("Relay message posted:", sentMessage.id);
   return sentMessage;
+}
+
+async function saveRelayMetadata({ relayKey, sentMessage, metadata }) {
+  await saveRelayMessage({
+    meetupUrl: relayKey,
+    targetMessageId: sentMessage.id,
+    targetChannelId: metadata.targetChannelId,
+    sourceMessageId: metadata.sourceMessageId,
+    sourceChannelId: metadata.sourceChannelId,
+    lastType: metadata.lastType,
+  });
 }
 
 client.on("messageCreate", async (message) => {
