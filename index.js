@@ -153,52 +153,12 @@ const webhooks = await targetChannel.fetchWebhooks();
     });
   }
 
-const existingRelay = await getRelayMessage(parsed.meetupUrl);
-
-if (existingRelay) {
-  await webhook.editMessage(existingRelay.target_message_id, {
-    username: "Campfire",
-    avatarURL: message.author.displayAvatarURL(),
-    content: message.content,
-    embeds: [message.embeds[0]],
-  });
-
-  await saveRelayMessage({
-    meetupUrl: parsed.meetupUrl,
-    targetMessageId: existingRelay.target_message_id,
-    targetChannelId: targetChannel.id,
-    sourceMessageId: parsed.sourceMessageId,
-    sourceChannelId: parsed.sourceChannelId,
-    lastType: parsed.type,
-  });
-
-  console.log("Existing relay message edited");
-  return;
-}
-
-  await relayOrEditMessage({
+await relayOrEditMessage({
   webhook,
   parsed,
   sourceMessage: message,
-  targetChannelId: TARGET_CHANNEL_ID,
-});
-
-await saveRelayMessage({
-  meetupUrl: parsed.meetupUrl,
-  targetMessageId: sentMessage.id,
   targetChannelId: targetChannel.id,
-  sourceMessageId: parsed.sourceMessageId,
-  sourceChannelId: parsed.sourceChannelId,
-  lastType: parsed.type,
 });
-
-const saved = await getRelayMessage(parsed.meetupUrl);
-
-console.log("Saved row:");
-console.log(saved);
-
-console.log("Relay saved to database");
-}
 
 client.on("messageCreate", async (message) => {
   if (message.channel.id !== process.env.SOURCE_CHANNEL_ID) return;
