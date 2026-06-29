@@ -94,12 +94,13 @@ async function relayOrEditMessage({
 }) {
   const existing = await getRelayMessage(parsed.meetupUrl);
 
-  const payload = {
-    content: sourceMessage.content,
-    username: "Campfire",
-    avatarURL: sourceMessage.author.displayAvatarURL(),
-    embeds: sourceMessage.embeds.length ? [sourceMessage.embeds[0]] : [],
-  };
+const payload = {
+  content: sourceMessage.content,
+  username: "Campfire",
+  avatarURL: sourceMessage.author.displayAvatarURL(),
+  embeds: sourceMessage.embeds,
+  components: sourceMessage.components,
+};
 
   let sentMessage;
 
