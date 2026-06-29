@@ -121,6 +121,10 @@ console.log("Relay saved to database");
 client.on("messageCreate", async (message) => {
   if (message.channel.id !== process.env.SOURCE_CHANNEL_ID) return;
 
+console.log(
+  `MESSAGE: ${message.author.tag} | ${message.channel.id} | ${message.content}`
+);
+
   const parsed = parseCampfireMessage(message);
 
   if (!parsed) {
