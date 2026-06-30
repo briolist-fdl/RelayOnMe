@@ -29,7 +29,7 @@ const client = new Client({
 
 client.once("clientReady", async () => {
   console.log(`Login success as ${client.user.tag}`);
-  console.log("RelayOnMe build: refactor-relay-modules-2026-06-30");
+  console.log("RelayOnMe build: campfire-group-role-2026-06-30");
 
   try {
     await initDb();
@@ -40,6 +40,10 @@ client.once("clientReady", async () => {
 
 function getChannelOption(interaction, name) {
   return interaction.options.getChannel(name);
+}
+
+function getRoleOption(interaction, name) {
+  return interaction.options.getRole(name);
 }
 
 function getStringOption(interaction, name) {
@@ -129,9 +133,14 @@ async function requireRelayConfigPermission(interaction) {
   return false;
 }
 
-
 function formatEnabled(value) {
   return value ? "yes" : "no";
+}
+
+function formatCampfireGroupRole(config) {
+  return config.campfire_group_role_id
+    ? `<@&${config.campfire_group_role_id}>`
+    : "none";
 }
 
 function formatRelayConfig(config, index = null) {
@@ -142,6 +151,7 @@ function formatRelayConfig(config, index = null) {
     `Parser: ${config.parser}`,
     `Source: <#${config.source_channel_id}>`,
     `Target: <#${config.target_channel_id}>`,
+    `Campfire group role: ${formatCampfireGroupRole(config)}`,
     `Enabled: ${formatEnabled(config.enabled)}`,
   ].join("\n");
 }
@@ -182,6 +192,7 @@ async function handleRelayStatus(interaction) {
       "Storage: connected",
       "Mode: database-config",
       "Commands: grouped-config",
+      "Campfire group role: supported",
     ].join("\n")
   );
 }
@@ -195,6 +206,7 @@ async function handleRelayConfigAdd(interaction) {
   const parser = getStringOption(interaction, "parser");
   const sourceChannel = getChannelOption(interaction, "source_channel");
   const targetChannel = getChannelOption(interaction, "target_channel");
+  const groupRole = getRoleOption(interaction, "group_role");
 
   if (!parser || !sourceChannel || !targetChannel) {
     await replyEphemeral(
@@ -222,6 +234,11 @@ async function handleRelayConfigAdd(interaction) {
     return;
   }
 
+  if (groupRole && groupRole.guild.id !== interaction.guildId) {
+    await replyEphemeral(interaction, "Group role must belong to this server.");
+    return;
+  }
+
   const normalizedParser = parser.toLowerCase();
 
   if (normalizedParser !== "campfire") {
@@ -240,6 +257,7 @@ async function handleRelayConfigAdd(interaction) {
     targetChannelId: targetChannel.id,
     parser: normalizedParser,
     enabled: true,
+    campfireGroupRoleId: groupRole?.id ?? null,
   });
 
   const action = existingConfig ? "updated" : "created";
@@ -252,12 +270,13 @@ async function handleRelayConfigAdd(interaction) {
       `Parser: ${savedConfig.parser}`,
       `Source: <#${savedConfig.source_channel_id}>`,
       `Target: <#${savedConfig.target_channel_id}>`,
+      `Campfire group role: ${formatCampfireGroupRole(savedConfig)}`,
       `Enabled: ${formatEnabled(savedConfig.enabled)}`,
     ].join("\n")
   );
 
   console.log(
-    `Relay config ${action}: guild=${interaction.guildId} parser=${normalizedParser} source=${sourceChannel.id} target=${targetChannel.id}`
+    `Relay config ${action}: guild=${interaction.guildId} parser=${normalizedParser} source=${sourceChannel.id} target=${targetChannel.id} campfire_group_role=${savedConfig.campfire_group_role_id || "none"}`
   );
 }
 
@@ -347,6 +366,7 @@ async function handleRelayConfigEnable(interaction) {
       `Source: <#${config.source_channel_id}>`,
       `Target: <#${config.target_channel_id}>`,
       `Parser: ${config.parser}`,
+      `Campfire group role: ${formatCampfireGroupRole(config)}`,
     ].join("\n")
   );
 
@@ -395,6 +415,7 @@ async function handleRelayConfigDisable(interaction) {
       `Source: <#${config.source_channel_id}>`,
       `Target: <#${config.target_channel_id}>`,
       `Parser: ${config.parser}`,
+      `Campfire group role: ${formatCampfireGroupRole(config)}`,
     ].join("\n")
   );
 
@@ -457,6 +478,7 @@ async function handleRelayConfigRemove(interaction) {
       `Source: <#${deletedConfig.source_channel_id}>`,
       `Target: <#${deletedConfig.target_channel_id}>`,
       `Parser: ${deletedConfig.parser}`,
+      `Campfire group role: ${formatCampfireGroupRole(deletedConfig)}`,
     ].join("\n")
   );
 
@@ -559,4 +581,3 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-

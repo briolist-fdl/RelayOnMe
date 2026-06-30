@@ -144,9 +144,15 @@ async function initDb() {
       target_channel_id TEXT NOT NULL,
       parser TEXT NOT NULL,
       enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      campfire_group_role_id TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
+
+  await pool.query(`
+    ALTER TABLE relay_configs
+    ADD COLUMN IF NOT EXISTS campfire_group_role_id TEXT;
   `);
 
   console.log("Database initialized");

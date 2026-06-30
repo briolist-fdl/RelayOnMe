@@ -2,6 +2,10 @@ const { relayOrEditMessage } = require("../relayEngine");
 
 const WEBHOOK_NAME = "RelayOnMe Campfire";
 
+const NO_ALLOWED_MENTIONS = {
+  parse: [],
+};
+
 function extractCampfireMeetupId(urlString) {
   if (!urlString) return null;
 
@@ -140,6 +144,65 @@ async function createCampfireRelayKey(parsed) {
   return createCampfireFallbackRelayKey(parsed);
 }
 
+function insertCampfireGroupMention(content, parsed, campfireGroupRoleId) {
+  if (!campfireGroupRoleId) {
+    return content;
+  }
+
+  const mention = `<@&${campfireGroupRoleId}>`;
+  const originalContent = content || "";
+
+  if (parsed.type === "created") {
+    const replaced = originalContent.replace(
+      /(A Campfire meetup was created)(!?)(.*)$/i,
+      `$1 in ${mention}$2$3`
+    );
+
+    return replaced === originalContent
+      ? `${mention} ${originalContent}`.trim()
+      : replaced;
+  }
+
+  if (parsed.type === "updated") {
+    const replaced = originalContent.replace(
+      /(A Campfire meetup was updated)(!?)(.*)$/i,
+      `$1 in ${mention}$2$3`
+    );
+
+    return replaced === originalContent
+      ? `${mention} ${originalContent}`.trim()
+      : replaced;
+  }
+
+  if (parsed.type === "starting_soon") {
+    const replaced = originalContent.replace(
+      /(A Campfire meetup)( is starting soon)(!?)(.*)$/i,
+      `$1 in ${mention}$2$3$4`
+    );
+
+    return replaced === originalContent
+      ? `${mention} ${originalContent}`.trim()
+      : replaced;
+  }
+
+  return `${mention} ${originalContent}`.trim();
+}
+
+function getCreateAllowedMentions(parsed, campfireGroupRoleId) {
+  if (parsed.type !== "created") {
+    return NO_ALLOWED_MENTIONS;
+  }
+
+  if (!campfireGroupRoleId) {
+    return NO_ALLOWED_MENTIONS;
+  }
+
+  return {
+    parse: [],
+    roles: [campfireGroupRoleId],
+  };
+}
+
 async function relayCampfireMeetup(parsed, message, client, config) {
   const targetChannel = await client.channels.fetch(config.target_channel_id);
 
@@ -158,8 +221,14 @@ async function relayCampfireMeetup(parsed, message, client, config) {
     });
   }
 
+  const campfireGroupRoleId = config.campfire_group_role_id || null;
+
   const payload = {
-    content: message.content,
+    content: insertCampfireGroupMention(
+      message.content,
+      parsed,
+      campfireGroupRoleId
+    ),
     username: "Campfire",
     avatarURL: message.author.displayAvatarURL(),
     embeds: message.embeds,
@@ -174,6 +243,8 @@ async function relayCampfireMeetup(parsed, message, client, config) {
     webhook,
     relayKey,
     payload,
+    createAllowedMentions: getCreateAllowedMentions(parsed, campfireGroupRoleId),
+    editAllowedMentions: NO_ALLOWED_MENTIONS,
     metadata: {
       targetChannelId: targetChannel.id,
       sourceMessageId: parsed.sourceMessageId,

@@ -72,6 +72,12 @@ const relayCommand = new SlashCommandBuilder()
                 ChannelType.GuildAnnouncement
               )
           )
+          .addRoleOption((option) =>
+            option
+              .setName("group_role")
+              .setDescription("Role to mention in Campfire relay messages for this group.")
+              .setRequired(false)
+          )
       )
 
       .addSubcommand((subcommand) =>
