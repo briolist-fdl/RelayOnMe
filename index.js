@@ -4,6 +4,7 @@ const {
   Client,
   GatewayIntentBits,
   MessageFlags,
+  PermissionsBitField,
 } = require("discord.js");
 
 const { initDb } = require("./initDb");
@@ -30,7 +31,7 @@ const client = new Client({
 
 client.once("clientReady", async () => {
   console.log(`Login success as ${client.user.tag}`);
-  console.log("RelayOnMe build: relay-config-commands-2026-06-30");
+  console.log("RelayOnMe build: relay-config-permission-guard-2026-06-30");
 
   try {
     await initDb();
@@ -337,6 +338,71 @@ async function replyEphemeral(interaction, content) {
     content,
   });
 }
+
+function memberHasRelayAdminRole(interaction) {
+  const relayAdminRoleId = process.env.RELAY_ADMIN_ROLE_ID;
+
+  if (!relayAdminRoleId) {
+    return false;
+  }
+
+  const memberRoles = interaction.member?.roles;
+
+  if (!memberRoles) {
+    return false;
+  }
+
+  if (Array.isArray(memberRoles)) {
+    return memberRoles.includes(relayAdminRoleId);
+  }
+
+  if (memberRoles.cache?.has(relayAdminRoleId)) {
+    return true;
+  }
+
+  if (typeof memberRoles.has === "function") {
+    return memberRoles.has(relayAdminRoleId);
+  }
+
+  return false;
+}
+
+function userCanManageRelayConfig(interaction) {
+  if (!interaction.inGuild()) {
+    return false;
+  }
+
+  if (interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator)) {
+    return true;
+  }
+
+  if (interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
+    return true;
+  }
+
+  return memberHasRelayAdminRole(interaction);
+}
+
+async function requireRelayConfigPermission(interaction) {
+  if (userCanManageRelayConfig(interaction)) {
+    return true;
+  }
+
+  await replyEphemeral(
+    interaction,
+    [
+      "You do not have permission to manage relay configs.",
+      "",
+      "Required:",
+      "- Administrator",
+      "- Manage Server",
+      "- or configured Relay admin role",
+    ].join("\n")
+  );
+
+  return false;
+}
+
 
 function formatEnabled(value) {
   return value ? "yes" : "no";
@@ -718,6 +784,10 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (group === "config") {
+      if (!(await requireRelayConfigPermission(interaction))) {
+        return;
+      }
+
       if (subcommand === "add") {
         await handleRelayConfigAdd(interaction);
         return;
