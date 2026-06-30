@@ -1,9 +1,12 @@
 require("dotenv").config();
 
-const { seedRelayConfigFromEnv } = require("./relayConfigStore");
 const { Client, GatewayIntentBits } = require("discord.js");
 const { initDb } = require("./initDb");
 const { getRelayMessage, saveRelayMessage } = require("./relayMessageStore");
+const {
+  seedRelayConfigFromEnv,
+  getRelayConfigBySourceChannel,
+} = require("./relayConfigStore");
 
 const CAMPFIRE_BOT_ID = "1224759021609685132";
 const WEBHOOK_NAME = "RelayOnMe Campfire";
@@ -25,7 +28,7 @@ client.once("clientReady", async () => {
   try {
     await initDb();
     await seedRelayConfigFromEnv();
-console.log("Relay config seeded from environment");
+    console.log("Relay config seeded from environment");
   } catch (error) {
     console.error("Database init failed:", error);
   }
@@ -72,8 +75,8 @@ function parseCampfireMessage(message) {
   };
 }
 
-async function relayCampfireMeetup(parsed, message, client) {
-  const targetChannel = await client.channels.fetch(process.env.TARGET_CHANNEL_ID);
+async function relayCampfireMeetup(parsed, message, client, config) {
+  const targetChannel = await client.channels.fetch(config.target_channel_id);
 
   if (!targetChannel) {
     console.log("Target channel not found");
@@ -163,11 +166,18 @@ async function saveRelayMetadata({ relayKey, sentMessage, metadata }) {
 
 client.on("messageCreate", async (message) => {
   try {
-    if (message.channel.id !== process.env.SOURCE_CHANNEL_ID) return;
+    const config = await getRelayConfigBySourceChannel(message.channel.id);
+
+    if (!config) return;
 
     console.log(
       `MESSAGE: ${message.author.tag} | ${message.channel.id} | ${message.content}`
     );
+
+    if (config.parser !== "campfire") {
+      console.log(`Unsupported parser: ${config.parser}`);
+      return;
+    }
 
     const parsed = parseCampfireMessage(message);
 
@@ -179,7 +189,7 @@ client.on("messageCreate", async (message) => {
     console.log("PARSED CAMPFIRE MEETUP");
     console.log(parsed);
 
-    await relayCampfireMeetup(parsed, message, client);
+    await relayCampfireMeetup(parsed, message, client, config);
   } catch (error) {
     console.error("messageCreate handler failed:", error);
   }
@@ -199,10 +209,8 @@ client.on("interactionCreate", async (interaction) => {
           [
             "**RelayOnMe status**",
             "",
-            `Source channel: ${process.env.SOURCE_CHANNEL_ID || "not set"}`,
-            `Target channel: ${process.env.TARGET_CHANNEL_ID || "not set"}`,
             "Storage: connected",
-            "Mode: env-config",
+            "Mode: database-config",
           ].join("\n"),
       });
     }
