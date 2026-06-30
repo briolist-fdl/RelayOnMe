@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const { seedRelayConfigFromEnv } = require("./relayConfigStore");
 const { Client, GatewayIntentBits } = require("discord.js");
 const { initDb } = require("./initDb");
 const { getRelayMessage, saveRelayMessage } = require("./relayMessageStore");
@@ -23,6 +24,8 @@ client.once("clientReady", async () => {
 
   try {
     await initDb();
+    await seedRelayConfigFromEnv();
+console.log("Relay config seeded from environment");
   } catch (error) {
     console.error("Database init failed:", error);
   }
