@@ -15,6 +15,36 @@ async function getRelayConfigBySourceChannel(sourceChannelId) {
   return result.rows[0] || null;
 }
 
+async function getRelayConfigByGuildAndSourceChannel(guildId, sourceChannelId) {
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM relay_configs
+    WHERE guild_id = $1
+      AND source_channel_id = $2
+    LIMIT 1;
+    `,
+    [guildId, sourceChannelId]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function getRelayConfigsByGuild(guildId, includeDisabled = false) {
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM relay_configs
+    WHERE guild_id = $1
+      AND ($2::BOOLEAN = TRUE OR enabled = TRUE)
+    ORDER BY enabled DESC, parser ASC, source_channel_id ASC;
+    `,
+    [guildId, includeDisabled]
+  );
+
+  return result.rows;
+}
+
 async function saveRelayConfig({
   guildId,
   sourceChannelId,
@@ -48,6 +78,36 @@ async function saveRelayConfig({
   return result.rows[0];
 }
 
+async function setRelayConfigEnabled({ guildId, sourceChannelId, enabled }) {
+  const result = await pool.query(
+    `
+    UPDATE relay_configs
+    SET enabled = $3,
+        updated_at = NOW()
+    WHERE guild_id = $1
+      AND source_channel_id = $2
+    RETURNING *;
+    `,
+    [guildId, sourceChannelId, enabled]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function deleteRelayConfig({ guildId, sourceChannelId }) {
+  const result = await pool.query(
+    `
+    DELETE FROM relay_configs
+    WHERE guild_id = $1
+      AND source_channel_id = $2
+    RETURNING *;
+    `,
+    [guildId, sourceChannelId]
+  );
+
+  return result.rows[0] || null;
+}
+
 async function seedRelayConfigFromEnv() {
   if (
     !process.env.DISCORD_GUILD_ID ||
@@ -69,6 +129,10 @@ async function seedRelayConfigFromEnv() {
 
 module.exports = {
   getRelayConfigBySourceChannel,
+  getRelayConfigByGuildAndSourceChannel,
+  getRelayConfigsByGuild,
   saveRelayConfig,
+  setRelayConfigEnabled,
+  deleteRelayConfig,
   seedRelayConfigFromEnv,
 };
