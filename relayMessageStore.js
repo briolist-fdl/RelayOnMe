@@ -1,30 +1,31 @@
-const { query } = require("./db");
+const { pool } = require("./db");
 
-async function getRelayMessage(meetupUrl) {
-  const result = await query(
+async function getRelayMessage(relayKey) {
+  const result = await pool.query(
     `
     SELECT *
     FROM relay_messages
-    WHERE meetup_url = $1
+    WHERE relay_key = $1
+    LIMIT 1;
     `,
-    [meetupUrl]
+    [relayKey]
   );
 
   return result.rows[0] || null;
 }
 
 async function saveRelayMessage({
-  meetupUrl,
+  relayKey,
   targetMessageId,
   targetChannelId,
   sourceMessageId,
   sourceChannelId,
   lastType,
 }) {
-  await query(
+  const result = await pool.query(
     `
     INSERT INTO relay_messages (
-      meetup_url,
+      relay_key,
       target_message_id,
       target_channel_id,
       source_message_id,
@@ -33,7 +34,7 @@ async function saveRelayMessage({
       updated_at
     )
     VALUES ($1, $2, $3, $4, $5, $6, NOW())
-    ON CONFLICT (meetup_url)
+    ON CONFLICT (relay_key)
     DO UPDATE SET
       target_message_id = EXCLUDED.target_message_id,
       target_channel_id = EXCLUDED.target_channel_id,
@@ -41,9 +42,10 @@ async function saveRelayMessage({
       source_channel_id = EXCLUDED.source_channel_id,
       last_type = EXCLUDED.last_type,
       updated_at = NOW()
+    RETURNING *;
     `,
     [
-      meetupUrl,
+      relayKey,
       targetMessageId,
       targetChannelId,
       sourceMessageId,
@@ -51,6 +53,8 @@ async function saveRelayMessage({
       lastType,
     ]
   );
+
+  return result.rows[0];
 }
 
 module.exports = {

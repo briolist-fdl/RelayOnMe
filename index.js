@@ -6,6 +6,7 @@ const { getRelayMessage, saveRelayMessage } = require("./relayMessageStore");
 const {
   seedRelayConfigFromEnv,
   getRelayConfigBySourceChannel,
+  saveRelayConfig,
 } = require("./relayConfigStore");
 
 const CAMPFIRE_BOT_ID = "1224759021609685132";
@@ -21,7 +22,7 @@ const client = new Client({
 
 client.once("clientReady", async () => {
   console.log(`Login success as ${client.user.tag}`);
-  console.log("RelayOnMe build: message-debug-2026-06-29");
+  console.log("RelayOnMe build: relay-add-2026-06-30");
   console.log("SOURCE_CHANNEL_ID:", process.env.SOURCE_CHANNEL_ID);
   console.log("TARGET_CHANNEL_ID:", process.env.TARGET_CHANNEL_ID);
 
@@ -164,6 +165,39 @@ async function saveRelayMetadata({ relayKey, sentMessage, metadata }) {
   });
 }
 
+function getStringOption(interaction, names) {
+  for (const name of names) {
+    const value = interaction.options.getString(name);
+    if (value) return value;
+  }
+
+  return null;
+}
+
+function getChannelOption(interaction, names) {
+  for (const name of names) {
+    const value = interaction.options.getChannel(name);
+    if (value) return value;
+  }
+
+  return null;
+}
+
+async function replyEphemeral(interaction, content) {
+  if (interaction.replied || interaction.deferred) {
+    await interaction.followUp({
+      ephemeral: true,
+      content,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    ephemeral: true,
+    content,
+  });
+}
+
 client.on("messageCreate", async (message) => {
   try {
     const config = await getRelayConfigBySourceChannel(message.channel.id);
@@ -203,25 +237,96 @@ client.on("interactionCreate", async (interaction) => {
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === "status") {
-      await interaction.reply({
-        ephemeral: true,
-        content:
-          [
-            "**RelayOnMe status**",
-            "",
-            "Storage: connected",
-            "Mode: database-config",
-          ].join("\n"),
-      });
+      await replyEphemeral(
+        interaction,
+        [
+          "**RelayOnMe status**",
+          "",
+          "Storage: connected",
+          "Mode: database-config",
+        ].join("\n")
+      );
+
+      return;
     }
+
+    if (subcommand === "add") {
+      if (!interaction.guildId) {
+        await replyEphemeral(interaction, "Relay can only be configured inside a server.");
+        return;
+      }
+
+      const parser = getStringOption(interaction, ["parser"]);
+      const sourceChannel = getChannelOption(interaction, [
+        "source_channel",
+        "source",
+        "source-channel",
+      ]);
+      const targetChannel = getChannelOption(interaction, [
+        "target_channel",
+        "target",
+        "target-channel",
+      ]);
+
+      if (!parser || !sourceChannel || !targetChannel) {
+        await replyEphemeral(
+          interaction,
+          [
+            "Missing relay config.",
+            "",
+            "Expected:",
+            "- Parser",
+            "- Source channel",
+            "- Target channel",
+          ].join("\n")
+        );
+
+        return;
+      }
+
+      const normalizedParser = parser.toLowerCase();
+
+      if (normalizedParser !== "campfire") {
+        await replyEphemeral(
+          interaction,
+          `Unsupported parser: ${parser}`
+        );
+
+        return;
+      }
+
+      await saveRelayConfig({
+        guildId: interaction.guildId,
+        sourceChannelId: sourceChannel.id,
+        targetChannelId: targetChannel.id,
+        parser: normalizedParser,
+        enabled: true,
+      });
+
+      await replyEphemeral(
+        interaction,
+        [
+          "Relay created.",
+          "",
+          `Parser: ${normalizedParser}`,
+          `Source: <#${sourceChannel.id}>`,
+          `Target: <#${targetChannel.id}>`,
+        ].join("\n")
+      );
+
+      console.log(
+        `Relay config saved: guild=${interaction.guildId} parser=${normalizedParser} source=${sourceChannel.id} target=${targetChannel.id}`
+      );
+
+      return;
+    }
+
+    await replyEphemeral(interaction, `Unknown relay subcommand: ${subcommand}`);
   } catch (error) {
     console.error("interactionCreate handler failed:", error);
 
     if (interaction.isRepliable()) {
-      await interaction.reply({
-        ephemeral: true,
-        content: "RelayOnMe command failed. Check logs.",
-      });
+      await replyEphemeral(interaction, "RelayOnMe command failed. Check logs.");
     }
   }
 });

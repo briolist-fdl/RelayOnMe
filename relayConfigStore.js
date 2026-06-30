@@ -20,6 +20,7 @@ async function saveRelayConfig({
   sourceChannelId,
   targetChannelId,
   parser,
+  enabled = true,
 }) {
   const result = await pool.query(
     `
@@ -28,19 +29,20 @@ async function saveRelayConfig({
       source_channel_id,
       target_channel_id,
       parser,
+      enabled,
       updated_at
     )
-    VALUES ($1, $2, $3, $4, NOW())
+    VALUES ($1, $2, $3, $4, $5, NOW())
     ON CONFLICT (source_channel_id)
     DO UPDATE SET
       guild_id = EXCLUDED.guild_id,
       target_channel_id = EXCLUDED.target_channel_id,
       parser = EXCLUDED.parser,
-      enabled = TRUE,
+      enabled = EXCLUDED.enabled,
       updated_at = NOW()
     RETURNING *;
     `,
-    [guildId, sourceChannelId, targetChannelId, parser]
+    [guildId, sourceChannelId, targetChannelId, parser, enabled]
   );
 
   return result.rows[0];
@@ -61,6 +63,7 @@ async function seedRelayConfigFromEnv() {
     sourceChannelId: process.env.SOURCE_CHANNEL_ID,
     targetChannelId: process.env.TARGET_CHANNEL_ID,
     parser: "campfire",
+    enabled: true,
   });
 }
 
