@@ -149,7 +149,7 @@ async function relayOrEditMessage({ webhook, relayKey, payload, metadata }) {
 
 async function saveRelayMetadata({ relayKey, sentMessage, metadata }) {
   await saveRelayMessage({
-    meetupUrl: relayKey,
+    relayKey,
     targetMessageId: sentMessage.id,
     targetChannelId: metadata.targetChannelId,
     sourceMessageId: metadata.sourceMessageId,
@@ -179,6 +179,39 @@ client.on("messageCreate", async (message) => {
     await relayCampfireMeetup(parsed, message, client);
   } catch (error) {
     console.error("messageCreate handler failed:", error);
+  }
+});
+
+client.on("interactionCreate", async (interaction) => {
+  try {
+    if (!interaction.isChatInputCommand()) return;
+    if (interaction.commandName !== "relay") return;
+
+    const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === "status") {
+      await interaction.reply({
+        ephemeral: true,
+        content:
+          [
+            "**RelayOnMe status**",
+            "",
+            `Source channel: ${process.env.SOURCE_CHANNEL_ID || "not set"}`,
+            `Target channel: ${process.env.TARGET_CHANNEL_ID || "not set"}`,
+            "Storage: connected",
+            "Mode: env-config",
+          ].join("\n"),
+      });
+    }
+  } catch (error) {
+    console.error("interactionCreate handler failed:", error);
+
+    if (interaction.isRepliable()) {
+      await interaction.reply({
+        ephemeral: true,
+        content: "RelayOnMe command failed. Check logs.",
+      });
+    }
   }
 });
 
