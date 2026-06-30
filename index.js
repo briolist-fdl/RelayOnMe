@@ -4,7 +4,6 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const { initDb } = require("./initDb");
 const { getRelayMessage, saveRelayMessage } = require("./relayMessageStore");
 const {
-  seedRelayConfigFromEnv,
   getRelayConfigBySourceChannel,
   saveRelayConfig,
 } = require("./relayConfigStore");
@@ -22,14 +21,10 @@ const client = new Client({
 
 client.once("clientReady", async () => {
   console.log(`Login success as ${client.user.tag}`);
-  console.log("RelayOnMe build: relay-add-2026-06-30");
-  console.log("SOURCE_CHANNEL_ID:", process.env.SOURCE_CHANNEL_ID);
-  console.log("TARGET_CHANNEL_ID:", process.env.TARGET_CHANNEL_ID);
+  console.log("RelayOnMe build: database-config-only-2026-06-30");
 
   try {
     await initDb();
-    await seedRelayConfigFromEnv();
-    console.log("Relay config seeded from environment");
   } catch (error) {
     console.error("Database init failed:", error);
   }
