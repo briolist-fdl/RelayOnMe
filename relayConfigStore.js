@@ -40,18 +40,32 @@ async function saveRelayConfig({
       updated_at = NOW()
     RETURNING *;
     `,
-    [
-      guildId,
-      sourceChannelId,
-      targetChannelId,
-      parser,
-    ]
+    [guildId, sourceChannelId, targetChannelId, parser]
   );
 
   return result.rows[0];
 }
 
+async function seedRelayConfigFromEnv() {
+  if (
+    !process.env.DISCORD_GUILD_ID ||
+    !process.env.SOURCE_CHANNEL_ID ||
+    !process.env.TARGET_CHANNEL_ID
+  ) {
+    console.log("Relay config seed skipped: missing env vars");
+    return null;
+  }
+
+  return saveRelayConfig({
+    guildId: process.env.DISCORD_GUILD_ID,
+    sourceChannelId: process.env.SOURCE_CHANNEL_ID,
+    targetChannelId: process.env.TARGET_CHANNEL_ID,
+    parser: "campfire",
+  });
+}
+
 module.exports = {
   getRelayConfigBySourceChannel,
   saveRelayConfig,
+  seedRelayConfigFromEnv,
 };
