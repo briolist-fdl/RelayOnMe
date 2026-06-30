@@ -75,7 +75,7 @@ const relayCommand = new SlashCommandBuilder()
           .addRoleOption((option) =>
             option
               .setName("group_role")
-              .setDescription("Role to mention in Campfire relay messages for this group.")
+              .setDescription("Fallback role to mention if no creator-specific Campfire rule matches.")
               .setRequired(false)
           )
       )
@@ -158,6 +158,90 @@ const relayCommand = new SlashCommandBuilder()
             option
               .setName("confirm")
               .setDescription("Must be true to permanently remove this relay config.")
+              .setRequired(true)
+          )
+      )
+  )
+
+  .addSubcommandGroup((group) =>
+    group
+      .setName("campfire")
+      .setDescription("Manage Campfire-specific relay behavior.")
+
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("creator_role_add")
+          .setDescription("Map a Campfire meetup creator to a group role.")
+          .addChannelOption((option) =>
+            option
+              .setName("source_channel")
+              .setDescription("Campfire source channel this creator rule applies to.")
+              .setRequired(true)
+              .addChannelTypes(
+                ChannelType.GuildText,
+                ChannelType.GuildAnnouncement
+              )
+          )
+          .addUserOption((option) =>
+            option
+              .setName("creator")
+              .setDescription("Discord user shown as creator in Campfire meetup messages.")
+              .setRequired(true)
+          )
+          .addRoleOption((option) =>
+            option
+              .setName("group_role")
+              .setDescription("Role to mention when this creator creates a Campfire meetup.")
+              .setRequired(true)
+          )
+      )
+
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("creator_role_list")
+          .setDescription("List Campfire creator-to-role rules for one source channel.")
+          .addChannelOption((option) =>
+            option
+              .setName("source_channel")
+              .setDescription("Campfire source channel to list creator rules for.")
+              .setRequired(true)
+              .addChannelTypes(
+                ChannelType.GuildText,
+                ChannelType.GuildAnnouncement
+              )
+          )
+      )
+
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("creator_role_remove")
+          .setDescription("Remove one Campfire creator-to-role rule.")
+          .addChannelOption((option) =>
+            option
+              .setName("source_channel")
+              .setDescription("Campfire source channel this creator rule applies to.")
+              .setRequired(true)
+              .addChannelTypes(
+                ChannelType.GuildText,
+                ChannelType.GuildAnnouncement
+              )
+          )
+          .addUserOption((option) =>
+            option
+              .setName("creator")
+              .setDescription("Discord creator user for the rule to remove.")
+              .setRequired(true)
+          )
+          .addRoleOption((option) =>
+            option
+              .setName("group_role")
+              .setDescription("Group role for the rule to remove.")
+              .setRequired(true)
+          )
+          .addBooleanOption((option) =>
+            option
+              .setName("confirm")
+              .setDescription("Must be true to permanently remove this creator rule.")
               .setRequired(true)
           )
       )

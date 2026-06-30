@@ -114,6 +114,169 @@ async function deleteRelayConfig({ guildId, sourceChannelId }) {
   return result.rows[0] || null;
 }
 
+async function addCampfireCreatorRole({
+  guildId,
+  sourceChannelId,
+  creatorDiscordUserId,
+  groupRoleId,
+}) {
+  const config = await getRelayConfigByGuildAndSourceChannel(
+    guildId,
+    sourceChannelId
+  );
+
+  if (!config) return null;
+
+  const result = await pool.query(
+    `
+    INSERT INTO relay_campfire_creator_roles (
+      relay_config_id,
+      creator_discord_user_id,
+      group_role_id,
+      enabled,
+      updated_at
+    )
+    VALUES ($1, $2, $3, TRUE, NOW())
+    ON CONFLICT (relay_config_id, creator_discord_user_id, group_role_id)
+    DO UPDATE SET
+      enabled = TRUE,
+      updated_at = NOW()
+    RETURNING *;
+    `,
+    [config.id, creatorDiscordUserId, groupRoleId]
+  );
+
+  return result.rows[0];
+}
+
+async function deleteCampfireCreatorRole({
+  guildId,
+  sourceChannelId,
+  creatorDiscordUserId,
+  groupRoleId,
+}) {
+  const config = await getRelayConfigByGuildAndSourceChannel(
+    guildId,
+    sourceChannelId
+  );
+
+  if (!config) return null;
+
+  const result = await pool.query(
+    `
+    DELETE FROM relay_campfire_creator_roles
+    WHERE relay_config_id = $1
+      AND creator_discord_user_id = $2
+      AND group_role_id = $3
+    RETURNING *;
+    `,
+    [config.id, creatorDiscordUserId, groupRoleId]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function getCampfireCreatorRolesByConfig({ guildId, sourceChannelId }) {
+  const result = await pool.query(
+    `
+    SELECT
+      r.*,
+      c.guild_id,
+      c.source_channel_id,
+      c.target_channel_id,
+      c.parser
+    FROM relay_campfire_creator_roles r
+    JOIN relay_configs c
+      ON c.id = r.relay_config_id
+    WHERE c.guild_id = $1
+      AND c.source_channel_id = $2
+    ORDER BY r.creator_discord_user_id ASC, r.group_role_id ASC;
+    `,
+    [guildId, sourceChannelId]
+  );
+
+  return result.rows;
+}
+
+async function getCampfireGroupRoleIdsForCreator({
+  relayConfigId,
+  creatorDiscordUserId,
+}) {
+  if (!creatorDiscordUserId) return [];
+
+  const result = await pool.query(
+    `
+    SELECT group_role_id
+    FROM relay_campfire_creator_roles
+    WHERE relay_config_id = $1
+      AND creator_discord_user_id = $2
+      AND enabled = TRUE
+    ORDER BY group_role_id ASC;
+    `,
+    [relayConfigId, creatorDiscordUserId]
+  );
+
+  return result.rows.map((row) => row.group_role_id);
+}
+
+async function getCampfireMeetupContext(relayKey) {
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM relay_campfire_meetup_context
+    WHERE relay_key = $1
+    LIMIT 1;
+    `,
+    [relayKey]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function saveCampfireMeetupContext({
+  relayKey,
+  relayConfigId,
+  creatorDiscordUserId,
+  groupRoleIds,
+}) {
+  const roleIds = [...new Set((groupRoleIds || []).filter(Boolean))];
+
+  const result = await pool.query(
+    `
+    INSERT INTO relay_campfire_meetup_context (
+      relay_key,
+      relay_config_id,
+      creator_discord_user_id,
+      group_role_ids,
+      updated_at
+    )
+    VALUES ($1, $2, $3, $4::JSONB, NOW())
+    ON CONFLICT (relay_key)
+    DO UPDATE SET
+      relay_config_id = EXCLUDED.relay_config_id,
+      creator_discord_user_id = COALESCE(
+        EXCLUDED.creator_discord_user_id,
+        relay_campfire_meetup_context.creator_discord_user_id
+      ),
+      group_role_ids = CASE
+        WHEN jsonb_array_length(EXCLUDED.group_role_ids) > 0
+        THEN EXCLUDED.group_role_ids
+        ELSE relay_campfire_meetup_context.group_role_ids
+      END,
+      updated_at = NOW()
+    RETURNING *;
+    `,
+    [
+      relayKey,
+      relayConfigId,
+      creatorDiscordUserId || null,
+      JSON.stringify(roleIds),
+    ]
+  );
+
+  return result.rows[0];
+}
+
 async function seedRelayConfigFromEnv() {
   if (
     !process.env.DISCORD_GUILD_ID ||
@@ -140,5 +303,11 @@ module.exports = {
   saveRelayConfig,
   setRelayConfigEnabled,
   deleteRelayConfig,
+  addCampfireCreatorRole,
+  deleteCampfireCreatorRole,
+  getCampfireCreatorRolesByConfig,
+  getCampfireGroupRoleIdsForCreator,
+  getCampfireMeetupContext,
+  saveCampfireMeetupContext,
   seedRelayConfigFromEnv,
 };

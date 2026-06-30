@@ -9,7 +9,10 @@ const {
 
 const { initDb } = require("./initDb");
 const { parseCampfireMessage } = require("./parsers/campfireParser");
-const { relayCampfireMeetup } = require("./adapters/campfireAdapter");
+const {
+  relayCampfireMeetup,
+  createCampfireRelayKey,
+} = require("./adapters/campfireAdapter");
 const {
   getRelayConfigBySourceChannel,
   getRelayConfigByGuildAndSourceChannel,
@@ -17,6 +20,12 @@ const {
   saveRelayConfig,
   setRelayConfigEnabled,
   deleteRelayConfig,
+  addCampfireCreatorRole,
+  deleteCampfireCreatorRole,
+  getCampfireCreatorRolesByConfig,
+  getCampfireGroupRoleIdsForCreator,
+  getCampfireMeetupContext,
+  saveCampfireMeetupContext,
 } = require("./relayConfigStore");
 
 const client = new Client({
@@ -29,7 +38,7 @@ const client = new Client({
 
 client.once("clientReady", async () => {
   console.log(`Login success as ${client.user.tag}`);
-  console.log("RelayOnMe build: campfire-group-role-2026-06-30");
+  console.log("RelayOnMe build: campfire-creator-roles-2026-06-30");
 
   try {
     await initDb();
@@ -44,6 +53,10 @@ function getChannelOption(interaction, name) {
 
 function getRoleOption(interaction, name) {
   return interaction.options.getRole(name);
+}
+
+function getUserOption(interaction, name) {
+  return interaction.options.getUser(name);
 }
 
 function getStringOption(interaction, name) {
@@ -151,7 +164,7 @@ function formatRelayConfig(config, index = null) {
     `Parser: ${config.parser}`,
     `Source: <#${config.source_channel_id}>`,
     `Target: <#${config.target_channel_id}>`,
-    `Campfire group role: ${formatCampfireGroupRole(config)}`,
+    `Default Campfire group role: ${formatCampfireGroupRole(config)}`,
     `Enabled: ${formatEnabled(config.enabled)}`,
   ].join("\n");
 }
@@ -183,6 +196,84 @@ function formatRelayConfigList(configs) {
   return lines.join("\n").trim();
 }
 
+function formatCampfireCreatorRoleList(rows) {
+  if (rows.length === 0) {
+    return [
+      "No Campfire creator role rules found.",
+      "",
+      "Create one with:",
+      "/relay campfire creator_role_add",
+    ].join("\n");
+  }
+
+  const lines = ["Campfire creator role rules", ""];
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+
+    lines.push(
+      [
+        `${i + 1}. <@${row.creator_discord_user_id}> → <@&${row.group_role_id}>`,
+        `Source: <#${row.source_channel_id}>`,
+        `Enabled: ${formatEnabled(row.enabled)}`,
+      ].join("\n")
+    );
+
+    lines.push("");
+  }
+
+  return lines.join("\n").trim();
+}
+
+function dedupeIds(ids) {
+  return [...new Set((ids || []).filter(Boolean))];
+}
+
+async function resolveCampfireGroupRoleIds({ config, parsed, relayKey }) {
+  let roleIds = [];
+
+  if (parsed.creatorDiscordUserId) {
+    roleIds = await getCampfireGroupRoleIdsForCreator({
+      relayConfigId: config.id,
+      creatorDiscordUserId: parsed.creatorDiscordUserId,
+    });
+  }
+
+  if (roleIds.length > 0) {
+    roleIds = dedupeIds(roleIds);
+
+    await saveCampfireMeetupContext({
+      relayKey,
+      relayConfigId: config.id,
+      creatorDiscordUserId: parsed.creatorDiscordUserId,
+      groupRoleIds: roleIds,
+    });
+
+    return roleIds;
+  }
+
+  const existingContext = await getCampfireMeetupContext(relayKey);
+
+  if (existingContext?.group_role_ids?.length > 0) {
+    return dedupeIds(existingContext.group_role_ids);
+  }
+
+  if (config.campfire_group_role_id) {
+    roleIds = [config.campfire_group_role_id];
+
+    await saveCampfireMeetupContext({
+      relayKey,
+      relayConfigId: config.id,
+      creatorDiscordUserId: parsed.creatorDiscordUserId,
+      groupRoleIds: roleIds,
+    });
+
+    return roleIds;
+  }
+
+  return [];
+}
+
 async function handleRelayStatus(interaction) {
   await replyEphemeral(
     interaction,
@@ -192,7 +283,7 @@ async function handleRelayStatus(interaction) {
       "Storage: connected",
       "Mode: database-config",
       "Commands: grouped-config",
-      "Campfire group role: supported",
+      "Campfire creator roles: supported",
     ].join("\n")
   );
 }
@@ -270,13 +361,13 @@ async function handleRelayConfigAdd(interaction) {
       `Parser: ${savedConfig.parser}`,
       `Source: <#${savedConfig.source_channel_id}>`,
       `Target: <#${savedConfig.target_channel_id}>`,
-      `Campfire group role: ${formatCampfireGroupRole(savedConfig)}`,
+      `Default Campfire group role: ${formatCampfireGroupRole(savedConfig)}`,
       `Enabled: ${formatEnabled(savedConfig.enabled)}`,
     ].join("\n")
   );
 
   console.log(
-    `Relay config ${action}: guild=${interaction.guildId} parser=${normalizedParser} source=${sourceChannel.id} target=${targetChannel.id} campfire_group_role=${savedConfig.campfire_group_role_id || "none"}`
+    `Relay config ${action}: guild=${interaction.guildId} parser=${normalizedParser} source=${sourceChannel.id} target=${targetChannel.id} default_campfire_group_role=${savedConfig.campfire_group_role_id || "none"}`
   );
 }
 
@@ -366,7 +457,7 @@ async function handleRelayConfigEnable(interaction) {
       `Source: <#${config.source_channel_id}>`,
       `Target: <#${config.target_channel_id}>`,
       `Parser: ${config.parser}`,
-      `Campfire group role: ${formatCampfireGroupRole(config)}`,
+      `Default Campfire group role: ${formatCampfireGroupRole(config)}`,
     ].join("\n")
   );
 
@@ -415,7 +506,7 @@ async function handleRelayConfigDisable(interaction) {
       `Source: <#${config.source_channel_id}>`,
       `Target: <#${config.target_channel_id}>`,
       `Parser: ${config.parser}`,
-      `Campfire group role: ${formatCampfireGroupRole(config)}`,
+      `Default Campfire group role: ${formatCampfireGroupRole(config)}`,
     ].join("\n")
   );
 
@@ -478,12 +569,178 @@ async function handleRelayConfigRemove(interaction) {
       `Source: <#${deletedConfig.source_channel_id}>`,
       `Target: <#${deletedConfig.target_channel_id}>`,
       `Parser: ${deletedConfig.parser}`,
-      `Campfire group role: ${formatCampfireGroupRole(deletedConfig)}`,
+      `Default Campfire group role: ${formatCampfireGroupRole(deletedConfig)}`,
     ].join("\n")
   );
 
   console.log(
     `Relay config removed: guild=${interaction.guildId} source=${sourceChannel.id}`
+  );
+}
+
+async function handleCampfireCreatorRoleAdd(interaction) {
+  if (!interaction.guildId) {
+    await replyEphemeral(interaction, "Campfire rules can only be configured inside a server.");
+    return;
+  }
+
+  const sourceChannel = getChannelOption(interaction, "source_channel");
+  const creator = getUserOption(interaction, "creator");
+  const groupRole = getRoleOption(interaction, "group_role");
+
+  if (!sourceChannel || !creator || !groupRole) {
+    await replyEphemeral(
+      interaction,
+      [
+        "Missing Campfire creator role rule.",
+        "",
+        "Expected:",
+        "- Source channel",
+        "- Creator",
+        "- Group role",
+      ].join("\n")
+    );
+
+    return;
+  }
+
+  if (sourceChannel.guildId !== interaction.guildId) {
+    await replyEphemeral(interaction, "Source channel must belong to this server.");
+    return;
+  }
+
+  if (groupRole.guild.id !== interaction.guildId) {
+    await replyEphemeral(interaction, "Group role must belong to this server.");
+    return;
+  }
+
+  const savedRule = await addCampfireCreatorRole({
+    guildId: interaction.guildId,
+    sourceChannelId: sourceChannel.id,
+    creatorDiscordUserId: creator.id,
+    groupRoleId: groupRole.id,
+  });
+
+  if (!savedRule) {
+    await replyEphemeral(
+      interaction,
+      [
+        "No relay config found for this source channel.",
+        "",
+        "Create one first with:",
+        "/relay config add",
+        "",
+        `Source: <#${sourceChannel.id}>`,
+      ].join("\n")
+    );
+
+    return;
+  }
+
+  await replyEphemeral(
+    interaction,
+    [
+      "Campfire creator role rule saved.",
+      "",
+      `Source: <#${sourceChannel.id}>`,
+      `Creator: <@${creator.id}>`,
+      `Group role: <@&${groupRole.id}>`,
+    ].join("\n")
+  );
+
+  console.log(
+    `Campfire creator role saved: guild=${interaction.guildId} source=${sourceChannel.id} creator=${creator.id} group_role=${groupRole.id}`
+  );
+}
+
+async function handleCampfireCreatorRoleList(interaction) {
+  if (!interaction.guildId) {
+    await replyEphemeral(interaction, "Campfire rules can only be listed inside a server.");
+    return;
+  }
+
+  const sourceChannel = getChannelOption(interaction, "source_channel");
+
+  if (!sourceChannel) {
+    await replyEphemeral(interaction, "Missing source channel.");
+    return;
+  }
+
+  const rows = await getCampfireCreatorRolesByConfig({
+    guildId: interaction.guildId,
+    sourceChannelId: sourceChannel.id,
+  });
+
+  await replyEphemeral(interaction, formatCampfireCreatorRoleList(rows));
+}
+
+async function handleCampfireCreatorRoleRemove(interaction) {
+  if (!interaction.guildId) {
+    await replyEphemeral(interaction, "Campfire rules can only be removed inside a server.");
+    return;
+  }
+
+  const sourceChannel = getChannelOption(interaction, "source_channel");
+  const creator = getUserOption(interaction, "creator");
+  const groupRole = getRoleOption(interaction, "group_role");
+  const confirm = getBooleanOption(interaction, "confirm", false);
+
+  if (!sourceChannel || !creator || !groupRole) {
+    await replyEphemeral(interaction, "Missing source channel, creator, or group role.");
+    return;
+  }
+
+  if (!confirm) {
+    await replyEphemeral(
+      interaction,
+      [
+        "Campfire creator role rule was not removed.",
+        "",
+        "Run the command again with confirm: true to delete the rule.",
+        `Source: <#${sourceChannel.id}>`,
+        `Creator: <@${creator.id}>`,
+        `Group role: <@&${groupRole.id}>`,
+      ].join("\n")
+    );
+
+    return;
+  }
+
+  const deletedRule = await deleteCampfireCreatorRole({
+    guildId: interaction.guildId,
+    sourceChannelId: sourceChannel.id,
+    creatorDiscordUserId: creator.id,
+    groupRoleId: groupRole.id,
+  });
+
+  if (!deletedRule) {
+    await replyEphemeral(
+      interaction,
+      [
+        "No matching Campfire creator role rule found.",
+        "",
+        `Source: <#${sourceChannel.id}>`,
+        `Creator: <@${creator.id}>`,
+        `Group role: <@&${groupRole.id}>`,
+      ].join("\n")
+    );
+
+    return;
+  }
+
+  await replyEphemeral(
+    interaction,
+    [
+      "Campfire creator role rule removed.",
+      "",
+      `Source: <#${sourceChannel.id}>`,
+      `Creator: <@${creator.id}>`,
+      `Group role: <@&${groupRole.id}>`,
+    ].join("\n")
+  );
+
+  console.log(
+    `Campfire creator role removed: guild=${interaction.guildId} source=${sourceChannel.id} creator=${creator.id} group_role=${groupRole.id}`
   );
 }
 
@@ -512,7 +769,20 @@ client.on("messageCreate", async (message) => {
     console.log("PARSED CAMPFIRE MEETUP");
     console.log(parsed);
 
-    await relayCampfireMeetup(parsed, message, client, config);
+    const relayKey = await createCampfireRelayKey(parsed);
+
+    console.log("Relay key:", relayKey);
+
+    const campfireGroupRoleIds = await resolveCampfireGroupRoleIds({
+      config,
+      parsed,
+      relayKey,
+    });
+
+    await relayCampfireMeetup(parsed, message, client, config, {
+      relayKey,
+      campfireGroupRoleIds,
+    });
   } catch (error) {
     console.error("messageCreate handler failed:", error);
   }
@@ -563,6 +833,27 @@ client.on("interactionCreate", async (interaction) => {
 
       if (subcommand === "remove") {
         await handleRelayConfigRemove(interaction);
+        return;
+      }
+    }
+
+    if (group === "campfire") {
+      if (!(await requireRelayConfigPermission(interaction))) {
+        return;
+      }
+
+      if (subcommand === "creator_role_add") {
+        await handleCampfireCreatorRoleAdd(interaction);
+        return;
+      }
+
+      if (subcommand === "creator_role_list") {
+        await handleCampfireCreatorRoleList(interaction);
+        return;
+      }
+
+      if (subcommand === "creator_role_remove") {
+        await handleCampfireCreatorRoleRemove(interaction);
         return;
       }
     }

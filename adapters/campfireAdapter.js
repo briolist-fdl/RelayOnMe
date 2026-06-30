@@ -144,66 +144,90 @@ async function createCampfireRelayKey(parsed) {
   return createCampfireFallbackRelayKey(parsed);
 }
 
-function insertCampfireGroupMention(content, parsed, campfireGroupRoleId) {
-  if (!campfireGroupRoleId) {
+function roleMentions(roleIds) {
+  return [...new Set((roleIds || []).filter(Boolean))]
+    .map((roleId) => `<@&${roleId}>`)
+    .join(", ");
+}
+
+function insertCampfireGroupMention(content, parsed, campfireGroupRoleIds) {
+  const mentions = roleMentions(campfireGroupRoleIds);
+
+  if (!mentions) {
     return content;
   }
 
-  const mention = `<@&${campfireGroupRoleId}>`;
   const originalContent = content || "";
 
   if (parsed.type === "created") {
-    const replaced = originalContent.replace(
+    let replaced = originalContent.replace(
+      /(.+?\)) created a Campfire meetup(!?)(.*)$/i,
+      `$1 created a Campfire meetup in ${mentions}$2$3`
+    );
+
+    if (replaced !== originalContent) {
+      return replaced;
+    }
+
+    replaced = originalContent.replace(
       /(A Campfire meetup was created)(!?)(.*)$/i,
-      `$1 in ${mention}$2$3`
+      `$1 in ${mentions}$2$3`
     );
 
     return replaced === originalContent
-      ? `${mention} ${originalContent}`.trim()
+      ? `${mentions} ${originalContent}`.trim()
       : replaced;
   }
 
   if (parsed.type === "updated") {
     const replaced = originalContent.replace(
       /(A Campfire meetup was updated)(!?)(.*)$/i,
-      `$1 in ${mention}$2$3`
+      `$1 in ${mentions}$2$3`
     );
 
     return replaced === originalContent
-      ? `${mention} ${originalContent}`.trim()
+      ? `${mentions} ${originalContent}`.trim()
       : replaced;
   }
 
   if (parsed.type === "starting_soon") {
     const replaced = originalContent.replace(
       /(A Campfire meetup)( is starting soon)(!?)(.*)$/i,
-      `$1 in ${mention}$2$3$4`
+      `$1 in ${mentions}$2$3$4`
     );
 
     return replaced === originalContent
-      ? `${mention} ${originalContent}`.trim()
+      ? `${mentions} ${originalContent}`.trim()
       : replaced;
   }
 
-  return `${mention} ${originalContent}`.trim();
+  return `${mentions} ${originalContent}`.trim();
 }
 
-function getCreateAllowedMentions(parsed, campfireGroupRoleId) {
+function getCreateAllowedMentions(parsed, campfireGroupRoleIds) {
+  const roleIds = [...new Set((campfireGroupRoleIds || []).filter(Boolean))];
+
   if (parsed.type !== "created") {
     return NO_ALLOWED_MENTIONS;
   }
 
-  if (!campfireGroupRoleId) {
+  if (roleIds.length === 0) {
     return NO_ALLOWED_MENTIONS;
   }
 
   return {
     parse: [],
-    roles: [campfireGroupRoleId],
+    roles: roleIds,
   };
 }
 
-async function relayCampfireMeetup(parsed, message, client, config) {
+async function relayCampfireMeetup(
+  parsed,
+  message,
+  client,
+  config,
+  campfireContext = {}
+) {
   const targetChannel = await client.channels.fetch(config.target_channel_id);
 
   if (!targetChannel) {
@@ -221,13 +245,14 @@ async function relayCampfireMeetup(parsed, message, client, config) {
     });
   }
 
-  const campfireGroupRoleId = config.campfire_group_role_id || null;
+  const campfireGroupRoleIds = campfireContext.campfireGroupRoleIds || [];
+  const relayKey = campfireContext.relayKey || await createCampfireRelayKey(parsed);
 
   const payload = {
     content: insertCampfireGroupMention(
       message.content,
       parsed,
-      campfireGroupRoleId
+      campfireGroupRoleIds
     ),
     username: "Campfire",
     avatarURL: message.author.displayAvatarURL(),
@@ -235,15 +260,11 @@ async function relayCampfireMeetup(parsed, message, client, config) {
     components: message.components,
   };
 
-  const relayKey = await createCampfireRelayKey(parsed);
-
-  console.log("Relay key:", relayKey);
-
   await relayOrEditMessage({
     webhook,
     relayKey,
     payload,
-    createAllowedMentions: getCreateAllowedMentions(parsed, campfireGroupRoleId),
+    createAllowedMentions: getCreateAllowedMentions(parsed, campfireGroupRoleIds),
     editAllowedMentions: NO_ALLOWED_MENTIONS,
     metadata: {
       targetChannelId: targetChannel.id,

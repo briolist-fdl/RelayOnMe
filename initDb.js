@@ -155,6 +155,30 @@ async function initDb() {
     ADD COLUMN IF NOT EXISTS campfire_group_role_id TEXT;
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS relay_campfire_creator_roles (
+      id SERIAL PRIMARY KEY,
+      relay_config_id INTEGER NOT NULL REFERENCES relay_configs(id) ON DELETE CASCADE,
+      creator_discord_user_id TEXT NOT NULL,
+      group_role_id TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (relay_config_id, creator_discord_user_id, group_role_id)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS relay_campfire_meetup_context (
+      relay_key TEXT PRIMARY KEY,
+      relay_config_id INTEGER NOT NULL REFERENCES relay_configs(id) ON DELETE CASCADE,
+      creator_discord_user_id TEXT,
+      group_role_ids JSONB NOT NULL DEFAULT '[]'::JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
   console.log("Database initialized");
 }
 
