@@ -30,16 +30,8 @@ async function initDb() {
   `);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS relay_configs (
-      id SERIAL PRIMARY KEY,
-      guild_id TEXT NOT NULL,
-      source_channel_id TEXT NOT NULL UNIQUE,
-      target_channel_id TEXT NOT NULL,
-      parser TEXT NOT NULL,
-      enabled BOOLEAN NOT NULL DEFAULT TRUE,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
+    ALTER TABLE relay_messages
+    ADD COLUMN IF NOT EXISTS relay_key TEXT;
   `);
 
   const hasMeetupUrl = await columnExists("relay_messages", "meetup_url");
@@ -52,6 +44,24 @@ async function initDb() {
         AND meetup_url IS NOT NULL;
     `);
   }
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS relay_messages_relay_key_idx
+    ON relay_messages (relay_key);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS relay_configs (
+      id SERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      source_channel_id TEXT NOT NULL UNIQUE,
+      target_channel_id TEXT NOT NULL,
+      parser TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 
   console.log("Database initialized");
 }
