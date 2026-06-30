@@ -8,7 +8,8 @@ const {
 } = require("discord.js");
 
 const { initDb } = require("./initDb");
-const { getRelayMessage, saveRelayMessage } = require("./relayMessageStore");
+const { parseCampfireMessage } = require("./parsers/campfireParser");
+const { relayCampfireMeetup } = require("./adapters/campfireAdapter");
 const {
   getRelayConfigBySourceChannel,
   getRelayConfigByGuildAndSourceChannel,
@@ -17,9 +18,6 @@ const {
   setRelayConfigEnabled,
   deleteRelayConfig,
 } = require("./relayConfigStore");
-
-const CAMPFIRE_BOT_ID = "1224759021609685132";
-const WEBHOOK_NAME = "RelayOnMe Campfire";
 
 const client = new Client({
   intents: [
@@ -31,7 +29,7 @@ const client = new Client({
 
 client.once("clientReady", async () => {
   console.log(`Login success as ${client.user.tag}`);
-  console.log("RelayOnMe build: relay-config-permission-guard-2026-06-30");
+  console.log("RelayOnMe build: refactor-relay-modules-2026-06-30");
 
   try {
     await initDb();
@@ -39,278 +37,6 @@ client.once("clientReady", async () => {
     console.error("Database init failed:", error);
   }
 });
-
-function parseCampfireMessage(message) {
-  if (message.author.id !== CAMPFIRE_BOT_ID) return null;
-  if (message.embeds.length === 0) return null;
-
-  const embed = message.embeds[0];
-  const content = message.content || "";
-
-  if (!embed.url || !embed.url.includes("cmpf.re")) return null;
-
-  const fields = {};
-  for (const field of embed.fields) {
-    fields[field.name] = field.value;
-  }
-
-  let type = "unknown";
-
-  if (content.includes("created")) {
-    type = "created";
-  } else if (content.includes("updated")) {
-    type = "updated";
-  } else if (content.includes("starting soon")) {
-    type = "starting_soon";
-  }
-
-  return {
-    type,
-    sourceMessageId: message.id,
-    sourceChannelId: message.channel.id,
-    meetupUrl: embed.url,
-    title: embed.title || null,
-    description: embed.description || null,
-    starts: fields["🗓️ Starts"] || null,
-    ends: fields["🗓️ Ends"] || null,
-    location: fields["📍Location"] || null,
-    creatorDiscordUserId: message.mentions.users.first()?.id || null,
-    isCommunityAmbassadorHosted: Object.keys(fields).some((fieldName) =>
-      fieldName.includes("Hosted by a Community Ambassador")
-    ),
-  };
-}
-
-function extractCampfireMeetupId(urlString) {
-  if (!urlString) return null;
-
-  try {
-    const url = new URL(urlString);
-
-    const pathMatch = url.pathname.match(/\/discover\/meetup\/([^/?#]+)/i);
-    if (pathMatch?.[1]) {
-      return pathMatch[1];
-    }
-
-    const possibleQueryParams = [
-      "meetupId",
-      "meetup_id",
-      "meetup",
-      "eventId",
-      "event_id",
-      "id",
-    ];
-
-    for (const param of possibleQueryParams) {
-      const value = url.searchParams.get(param);
-      if (value) return value;
-    }
-
-    const uuidMatch = urlString.match(
-      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
-    );
-
-    return uuidMatch?.[0] || null;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchRedirectLocation(url, method) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 7000);
-
-  try {
-    const response = await fetch(url, {
-      method,
-      redirect: "manual",
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "RelayOnMe/1.0",
-      },
-    });
-
-    return response.headers.get("location");
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function getRedirectLocation(url) {
-  try {
-    const headLocation = await fetchRedirectLocation(url, "HEAD");
-    if (headLocation) return headLocation;
-  } catch (error) {
-    console.warn("Campfire HEAD redirect lookup failed:", error.message);
-  }
-
-  try {
-    const getLocation = await fetchRedirectLocation(url, "GET");
-    if (getLocation) return getLocation;
-  } catch (error) {
-    console.warn("Campfire GET redirect lookup failed:", error.message);
-  }
-
-  return null;
-}
-
-async function resolveFinalUrl(startUrl, maxRedirects = 8) {
-  let currentUrl = startUrl;
-
-  for (let i = 0; i < maxRedirects; i += 1) {
-    const existingMeetupId = extractCampfireMeetupId(currentUrl);
-
-    if (existingMeetupId) {
-      return currentUrl;
-    }
-
-    const location = await getRedirectLocation(currentUrl);
-
-    if (!location) {
-      return currentUrl;
-    }
-
-    currentUrl = new URL(location, currentUrl).toString();
-  }
-
-  return currentUrl;
-}
-
-function normalizeRelayKeyPart(value) {
-  return String(value || "unknown")
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function createCampfireFallbackRelayKey(parsed) {
-  const sourceChannelId = normalizeRelayKeyPart(parsed.sourceChannelId);
-  const title = normalizeRelayKeyPart(parsed.title);
-  const starts = normalizeRelayKeyPart(parsed.starts);
-  const location = normalizeRelayKeyPart(parsed.location);
-
-  return `campfire:fallback:${sourceChannelId}:${title}:${starts}:${location}`;
-}
-
-async function createCampfireRelayKey(parsed) {
-  const directMeetupId = extractCampfireMeetupId(parsed.meetupUrl);
-
-  if (directMeetupId) {
-    return `campfire:meetup:${directMeetupId}`;
-  }
-
-  try {
-    const finalUrl = await resolveFinalUrl(parsed.meetupUrl);
-    const resolvedMeetupId = extractCampfireMeetupId(finalUrl);
-
-    if (resolvedMeetupId) {
-      console.log("Resolved Campfire meetup ID:", resolvedMeetupId);
-      return `campfire:meetup:${resolvedMeetupId}`;
-    }
-
-    console.warn("Could not resolve stable Campfire meetup ID. Using fallback key.");
-    console.warn("Campfire URL:", parsed.meetupUrl);
-    console.warn("Resolved URL:", finalUrl);
-  } catch (error) {
-    console.warn("Campfire relay key resolution failed:", error.message);
-  }
-
-  return createCampfireFallbackRelayKey(parsed);
-}
-
-async function relayCampfireMeetup(parsed, message, client, config) {
-  const targetChannel = await client.channels.fetch(config.target_channel_id);
-
-  if (!targetChannel) {
-    console.log("Target channel not found");
-    return;
-  }
-
-  const webhooks = await targetChannel.fetchWebhooks();
-  let webhook = webhooks.find((hook) => hook.name === WEBHOOK_NAME);
-
-  if (!webhook) {
-    webhook = await targetChannel.createWebhook({
-      name: WEBHOOK_NAME,
-      reason: "RelayOnMe needs a webhook to mirror Campfire meetup posts",
-    });
-  }
-
-  const payload = {
-    content: message.content,
-    username: "Campfire",
-    avatarURL: message.author.displayAvatarURL(),
-    embeds: message.embeds,
-    components: message.components,
-  };
-
-  const relayKey = await createCampfireRelayKey(parsed);
-
-  console.log("Relay key:", relayKey);
-
-  await relayOrEditMessage({
-    webhook,
-    relayKey,
-    payload,
-    metadata: {
-      targetChannelId: targetChannel.id,
-      sourceMessageId: parsed.sourceMessageId,
-      sourceChannelId: parsed.sourceChannelId,
-      lastType: parsed.type,
-    },
-  });
-}
-
-async function relayOrEditMessage({ webhook, relayKey, payload, metadata }) {
-  const existing = await getRelayMessage(relayKey);
-
-  let sentMessage;
-
-  if (existing?.target_message_id) {
-    try {
-      sentMessage = await webhook.editMessage(existing.target_message_id, payload);
-
-      await saveRelayMetadata({
-        relayKey,
-        sentMessage,
-        metadata,
-      });
-
-      console.log("Relay message edited:", sentMessage.id);
-      return sentMessage;
-    } catch (error) {
-      if (error.code !== 10008) {
-        console.error("Failed to edit relay message:", error);
-        throw error;
-      }
-
-      console.warn("Relay target message was deleted. Posting new relay message.");
-    }
-  }
-
-  sentMessage = await webhook.send(payload);
-
-  await saveRelayMetadata({
-    relayKey,
-    sentMessage,
-    metadata,
-  });
-
-  console.log("Relay message posted:", sentMessage.id);
-  return sentMessage;
-}
-
-async function saveRelayMetadata({ relayKey, sentMessage, metadata }) {
-  await saveRelayMessage({
-    relayKey,
-    targetMessageId: sentMessage.id,
-    targetChannelId: metadata.targetChannelId,
-    sourceMessageId: metadata.sourceMessageId,
-    sourceChannelId: metadata.sourceChannelId,
-    lastType: metadata.lastType,
-  });
-}
 
 function getChannelOption(interaction, name) {
   return interaction.options.getChannel(name);
@@ -833,3 +559,4 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
