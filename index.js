@@ -7,6 +7,8 @@ const {
   PermissionsBitField,
 } = require("discord.js");
 
+const { maybeAddSupportMessage } = require('./src/shared/supportDevelopment');
+
 const { initDb } = require("./initDb");
 const { parseCampfireMessage } = require("./parsers/campfireParser");
 const {
@@ -79,6 +81,23 @@ async function replyEphemeral(interaction, content) {
   await interaction.reply({
     flags: MessageFlags.Ephemeral,
     content,
+  });
+}
+
+async function replySuccess(interaction, content) {
+  const contentWithSupport = maybeAddSupportMessage(content);
+
+  if (interaction.replied || interaction.deferred) {
+    await interaction.followUp({
+      flags: MessageFlags.Ephemeral,
+      content: contentWithSupport,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    flags: MessageFlags.Ephemeral,
+    content: contentWithSupport,
   });
 }
 
@@ -353,7 +372,7 @@ async function handleRelayConfigAdd(interaction) {
 
   const action = existingConfig ? "updated" : "created";
 
-  await replyEphemeral(
+  await replySuccess(
     interaction,
     [
       `Relay ${action}.`,
