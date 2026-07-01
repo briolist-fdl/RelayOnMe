@@ -68,11 +68,11 @@ function buildSupportMessage() {
   const linkText = links.join(' · ');
 
   const variants = [
-    `${bot.name} is community-maintained. Helpful links: ${linkText}`,
-    `Support ${bot.name}'s continued development: ${linkText}`,
-    `${bot.name} is built as an open source/community tool. ${linkText}`,
-    `Want to help keep ${bot.name} improving? ${linkText}`,
-  ];
+  `${bot.name} is community-maintained. Helpful links: ${linkText}`,
+  `Support continued development of ${bot.name}: ${linkText}`,
+  `${bot.name} is built as an open source community tool. ${linkText}`,
+  `Help keep ${bot.name} maintained and improving: ${linkText}`,
+];
 
   return randomItem(variants);
 }
