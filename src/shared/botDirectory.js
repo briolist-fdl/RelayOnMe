@@ -1,29 +1,29 @@
 const BOTS = {
   'poke-post': {
     name: 'Poké-Post',
-    githubUrl: 'https://github.com/YOUR_USERNAME/poke-post',
+    githubUrl: 'https://github.com/briolist-fdl/poke-post',
     topggUrl: '',
     discordBotListUrl: '',
-    buyMeACoffeeUrl: '',
+    buyMeACoffeeUrl: 'https://buymeacoffee.com/andreasviken',
     supportMessageChance: 1.0,
   },
 
   relayonme: {
     name: 'RelayOnMe',
-    githubUrl: 'https://github.com/YOUR_USERNAME/relayonme',
+    githubUrl: 'https://github.com/briolist-fdl/relayonme',
     topggUrl: '',
     discordBotListUrl: '',
-    buyMeACoffeeUrl: '',
-    supportMessageChance: 0.2,
+    buyMeACoffeeUrl: 'https://buymeacoffee.com/andreasviken',
+    supportMessageChance: 0.33,
   },
 
   sap: {
     name: 'Selective Auto Publisher',
-    githubUrl: 'https://github.com/YOUR_USERNAME/selective-auto-publisher',
+    githubUrl: 'https://github.com/briolist-fdl/selective-auto-publisher',
     topggUrl: '',
     discordBotListUrl: '',
-    buyMeACoffeeUrl: '',
-    supportMessageChance: 1.0,
+    buyMeACoffeeUrl: 'https://buymeacoffee.com/andreasviken',
+    supportMessageChance: 0.33,
   },
 };
 
