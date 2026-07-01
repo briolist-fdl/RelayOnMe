@@ -7,7 +7,7 @@ const {
   PermissionsBitField,
 } = require("discord.js");
 
-const { maybeAddSupportMessage } = require('./src/shared/supportDevelopment');
+const { maybeAddSupportMessage } = require("./src/shared/supportDevelopment");
 
 const { initDb } = require("./initDb");
 const { parseCampfireMessage } = require("./parsers/campfireParser");
@@ -468,7 +468,7 @@ async function handleRelayConfigEnable(interaction) {
     return;
   }
 
-  await replyEphemeral(
+  await replySuccess(
     interaction,
     [
       "Relay enabled.",
@@ -517,7 +517,7 @@ async function handleRelayConfigDisable(interaction) {
     return;
   }
 
-  await replyEphemeral(
+  await replySuccess(
     interaction,
     [
       "Relay disabled.",
@@ -580,7 +580,7 @@ async function handleRelayConfigRemove(interaction) {
     return;
   }
 
-  await replyEphemeral(
+  await replySuccess(
     interaction,
     [
       "Relay removed.",
@@ -656,7 +656,7 @@ async function handleCampfireCreatorRoleAdd(interaction) {
     return;
   }
 
-  await replyEphemeral(
+  await replySuccess(
     interaction,
     [
       "Campfire creator role rule saved.",
@@ -747,7 +747,7 @@ async function handleCampfireCreatorRoleRemove(interaction) {
     return;
   }
 
-  await replyEphemeral(
+  await replySuccess(
     interaction,
     [
       "Campfire creator role rule removed.",
