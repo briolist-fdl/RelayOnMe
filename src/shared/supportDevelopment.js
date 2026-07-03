@@ -39,19 +39,19 @@ function buildSupportLinks(bot) {
   const links = [];
 
   if (bot.githubUrl) {
-    links.push(`⭐ [GitHub](${bot.githubUrl})`);
+    links.push(`⭐ [GitHub](<${bot.githubUrl}>)`);
   }
 
   if (bot.topggUrl) {
-    links.push(`👍 [Vote](${bot.topggUrl})`);
+    links.push(`👍 [Vote](<${bot.topggUrl}>)`);
   }
 
   if (bot.discordBotListUrl) {
-    links.push(`👍 [Discord Bot List](${bot.discordBotListUrl})`);
+    links.push(`👍 [Discord Bot List](<${bot.discordBotListUrl}>)`);
   }
 
   if (bot.buyMeACoffeeUrl) {
-    links.push(`☕ [Buy Me a Coffee](${bot.buyMeACoffeeUrl})`);
+    links.push(`☕ [Buy Me a Coffee](<${bot.buyMeACoffeeUrl}>)`);
   }
 
   return links;
@@ -68,11 +68,9 @@ function buildSupportMessage() {
   const linkText = links.join(' · ');
 
   const variants = [
-  `${bot.name} is community-maintained. Helpful links: ${linkText}`,
-  `Support continued development of ${bot.name}: ${linkText}`,
-  `${bot.name} is built as an open source community tool. ${linkText}`,
-  `Help keep ${bot.name} maintained and improving: ${linkText}`,
-];
+    `${bot.name} is built as an open source community tool. Helpful links: ${linkText}`,
+    `${bot.name} is built as an open source community tool. ${linkText}`,
+  ];
 
   return randomItem(variants);
 }
