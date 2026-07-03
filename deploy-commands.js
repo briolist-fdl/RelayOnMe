@@ -251,12 +251,36 @@ const commands = [relayCommand.toJSON()];
 
 const rest = new REST({ version: "10" }).setToken(token);
 
+const deployGlobalCommands =
+  String(process.env.DEPLOY_GLOBAL_COMMANDS || "").toLowerCase() === "true";
+
 async function deployCommands() {
   console.log("Deploying RelayOnMe slash commands...");
   console.log("Client ID:", clientId);
-  console.log("Guild ID:", guildId);
+  console.log("Guild ID:", guildId || "(none)");
+  console.log("Deploy global:", deployGlobalCommands);
 
-  await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+  if (!clientId) {
+    throw new Error("Missing DISCORD_CLIENT_ID or CLIENT_ID");
+  }
+
+  if (!deployGlobalCommands && !guildId) {
+    throw new Error(
+      "Missing GUILD_ID/DISCORD_GUILD_ID for guild deploy. Set DEPLOY_GLOBAL_COMMANDS=true to deploy globally."
+    );
+  }
+
+  const route = deployGlobalCommands
+    ? Routes.applicationCommands(clientId)
+    : Routes.applicationGuildCommands(clientId, guildId);
+
+  console.log(
+    deployGlobalCommands
+      ? "Deploying RelayOnMe commands globally."
+      : `Deploying RelayOnMe commands to guild ${guildId}.`
+  );
+
+  await rest.put(route, {
     body: commands,
   });
 
