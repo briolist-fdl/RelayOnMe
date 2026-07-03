@@ -1,63 +1,67 @@
-# Privacy Policy for RelayOnMe
+# Terms of Service for RelayOnMe
 
 Effective date: 2026-07-03
 
 RelayOnMe is a Discord bot for controlled message relaying between channels.
 
-This privacy policy explains what data RelayOnMe stores and why.
+By adding or using RelayOnMe in a Discord server, you agree to these terms.
 
-## Data RelayOnMe may store
+## Use of the bot
 
-RelayOnMe may store configuration data needed to operate the bot, including:
+RelayOnMe may be used to configure message relays between Discord channels.
 
-* Discord server IDs
-* source channel IDs
-* target channel IDs
-* configured role IDs
-* relay configuration status
-* creator-to-role rules
-* message references needed to track relayed messages
+Server administrators are responsible for how RelayOnMe is configured in their server, including:
 
-RelayOnMe may process message content when checking whether a message should be relayed, transformed, or reposted according to the configured relay rules.
+* which source channels are watched
+* which target channels receive relayed messages
+* which roles may be mentioned
+* which relay rules are created
+* whether relayed content is appropriate for the server
 
-## Why this data is used
+## Permissions
 
-RelayOnMe uses this data to:
+RelayOnMe requires Discord permissions needed to read configured source channels, send messages to configured target channels, use slash commands, and mention configured roles when applicable.
 
-* remember relay configurations
-* relay messages from configured source channels to configured target channels
-* mention configured roles when applicable
-* manage or track relayed messages
-* provide bot status and configuration responses to server administrators
+Do not grant RelayOnMe permissions that are not needed for your server setup.
 
-## What RelayOnMe does not do
+## Acceptable use
 
-RelayOnMe is not designed as a general-purpose message archive.
+You may not use RelayOnMe to:
 
-RelayOnMe does not sell user data.
+* harass, spam, or abuse users
+* relay private or sensitive content without appropriate permission
+* evade Discord moderation or server rules
+* violate Discord’s Terms of Service or Community Guidelines
+* violate applicable laws or regulations
 
-RelayOnMe does not share stored configuration data with advertisers or third parties.
+## Availability
 
-## Data retention
+RelayOnMe is provided as-is.
 
-RelayOnMe stores configuration data for as long as the bot is configured for a server.
+The bot may be changed, updated, interrupted, or discontinued at any time.
 
-Server administrators can remove relay configurations using the bot commands. Removing the bot from a server may not automatically delete all stored configuration data from the database.
+No guarantee is made that RelayOnMe will always be available or error-free.
 
-## Data deletion
+## Responsibility
 
-To request deletion of stored RelayOnMe data for a server, contact the maintainer through the GitHub repository:
+Server owners and administrators are responsible for reviewing RelayOnMe’s configuration and output in their own servers.
 
-https://github.com/briolist-fdl/relayonme
+The maintainer is not responsible for misuse of the bot, incorrect configuration, or content relayed by server administrators or third-party integrations.
 
-## Open source
+## Support development
 
 RelayOnMe is built as an open source community tool.
 
-The source code is available here:
+If RelayOnMe helps your server, you can support further development by contributing feedback or issues on GitHub, or by supporting the developer here:
 
-https://github.com/briolist-fdl/relayonme
+https://buymeacoffee.com/andreasviken
 
 ## Changes
 
-This policy may be updated when RelayOnMe changes how it stores or processes data.
+These terms may be updated when RelayOnMe changes functionality, hosting, or data handling.
+
+## Contact
+
+For questions, issues, or data requests, use the GitHub repository:
+
+https://github.com/briolist-fdl/relayonme
