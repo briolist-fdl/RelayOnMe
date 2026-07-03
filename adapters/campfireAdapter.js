@@ -161,7 +161,7 @@ function insertCampfireGroupMention(content, parsed, campfireGroupRoleIds) {
 
   if (parsed.type === "created") {
     let replaced = originalContent.replace(
-      /(.+?\)) created a Campfire meetup(!?)(.*)$/i,
+      /^(.+?)\s+created a Campfire meetup(!?)(.*)$/i,
       `$1 created a Campfire meetup in ${mentions}$2$3`
     );
 
@@ -175,7 +175,7 @@ function insertCampfireGroupMention(content, parsed, campfireGroupRoleIds) {
     );
 
     return replaced === originalContent
-      ? `${mentions} ${originalContent}`.trim()
+      ? `${originalContent} in ${mentions}`.trim()
       : replaced;
   }
 
@@ -186,7 +186,7 @@ function insertCampfireGroupMention(content, parsed, campfireGroupRoleIds) {
     );
 
     return replaced === originalContent
-      ? `${mentions} ${originalContent}`.trim()
+      ? `${originalContent} in ${mentions}`.trim()
       : replaced;
   }
 
@@ -197,11 +197,11 @@ function insertCampfireGroupMention(content, parsed, campfireGroupRoleIds) {
     );
 
     return replaced === originalContent
-      ? `${mentions} ${originalContent}`.trim()
+      ? `${originalContent} in ${mentions}`.trim()
       : replaced;
   }
 
-  return `${mentions} ${originalContent}`.trim();
+  return `${originalContent} ${mentions}`.trim();
 }
 
 function getCreateAllowedMentions(parsed, campfireGroupRoleIds) {
