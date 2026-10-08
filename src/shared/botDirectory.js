@@ -10,7 +10,7 @@ const BOTS = {
 
   relayonme: {
     name: 'RelayOnMe',
-    githubUrl: 'https://github.com/briolist-fdl/relayonme',
+    githubUrl: 'https://github.com/briolist-fdl/RelayOnMe',
     topggUrl: '',
     discordBotListUrl: '',
     buyMeACoffeeUrl: 'https://buymeacoffee.com/briolist',
