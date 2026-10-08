@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-09-30",
+  "kind": "public-http-route-observation",
+  "scope": "One public direct meetup URL, not a short-link trace or an API guarantee",
+  "requests": [
+    {
+      "url": "https://campfire.nianticlabs.com/discover/meetup/19ac4605-606d-4476-8f36-3867b9f5771d",
+      "status": 301,
+      "location": "https://campfire.scopely.com/discover/meetup/19ac4605-606d-4476-8f36-3867b9f5771d"
+    },
+    {
+      "url": "https://campfire.scopely.com/discover/meetup/19ac4605-606d-4476-8f36-3867b9f5771d",
+      "status": 200,
+      "location": null
+    }
+  ],
+  "meetupId": "19ac4605-606d-4476-8f36-3867b9f5771d",
+  "routeResource": "https://campfire-web-assets.nianticlabs.com/_next/static/chunks/app/(web)/discover/meetup/%5Bid%5D/page-942e43554b43ce32.js"
+}

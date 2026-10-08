@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "configs": [
+    { "id": 1, "guild_id": "synthetic-guild", "source_channel_id": "synthetic-source", "target_channel_id": "synthetic-target", "parser": "campfire", "enabled": true }
+  ],
+  "messages": [
+    { "relay_key": "campfire:fallback:PRIVATE_SYNTHETIC_TITLE", "source_channel_id": "synthetic-source", "source_message_id": "synthetic-source-message", "target_channel_id": "synthetic-target", "target_message_id": "synthetic-target-message" }
+  ],
+  "contexts": []
+}

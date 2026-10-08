@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-09-30",
+  "kind": "sanitized-user-supplied-short-link-observation",
+  "note": "Hostnames, paths and statuses were observed. Short code and meetup UUID were replaced with synthetic values. No response bodies, cookies or profiles retained.",
+  "head": { "url": "https://cmpf.re/SYNTHETIC", "status": 405, "location": null },
+  "requests": [
+    { "url": "https://cmpf.re/SYNTHETIC", "status": 307, "location": "https://campfire.nianticlabs.com/discover/meetup/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" },
+    { "url": "https://campfire.nianticlabs.com/discover/meetup/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "status": 301, "location": "https://campfire.scopely.com/discover/meetup/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" },
+    { "url": "https://campfire.scopely.com/discover/meetup/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "status": 200, "location": null }
+  ],
+  "meetupId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+}

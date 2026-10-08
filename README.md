@@ -75,6 +75,9 @@ RelayOnMe is configured through environment variables.
 DISCORD_TOKEN=
 DISCORD_CLIENT_ID=
 GUILD_ID=
+DEPLOY_GLOBAL_COMMANDS=false
+BRIO_BOTS_GUILD_ID=
+BRIO_BOTS_ABOUT_CHANNEL_ID=
 DATABASE_URL=
 
 BOT_ID=relayonme
@@ -110,6 +113,11 @@ Deploy slash commands:
 ```bash
 node deploy-commands.js
 ```
+
+For global registration, set `DEPLOY_GLOBAL_COMMANDS=true` explicitly. A guild ID is only required for guild registration. Registration changes Discord commands; it is not part of `npm test`.
+
+`/about` links by default to `#relayonme` in Brio Bots. The two optional Brio
+Bots variables may override that destination when both are valid Discord IDs.
 
 Start the bot:
 

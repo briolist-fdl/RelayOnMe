@@ -7,6 +7,7 @@ function envBool(value, fallback = false) {
 }
 
 function envNumber(value, fallback) {
+  if (value === undefined || value === null || String(value).trim() === '') return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
@@ -85,7 +86,8 @@ function maybeAddSupportMessage(content) {
 
   if (!supportMessage) return content;
 
-  return `${content}\n\n---\n${supportMessage}`;
+  const combined = `${content}\n\n---\n${supportMessage}`;
+  return combined.length <= 2000 ? combined : content;
 }
 
 function successReply(content) {

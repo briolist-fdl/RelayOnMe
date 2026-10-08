@@ -1,0 +1,6 @@
+'use strict';
+const requiredTables=['scopes','events','aliases','deliveries','imports','legacy_quarantines','event_contexts','event_context_roles','context_imports','delivery_attempts','source_observations'];
+async function preflightRelayV2(pool,{expectedDatabase,transport,evidence}={}){
+  if(!pool||typeof pool.connect!=='function'||typeof expectedDatabase!=='string'||!expectedDatabase.trim())throw new TypeError('Preflight requires pool and expected database');
+  let client;try{client=await pool.connect();const database=(await client.query('SELECT current_database() AS database')).rows[0]?.database;const tables=(await client.query(`SELECT table_name FROM information_schema.tables WHERE table_schema='relay_identity_v2'`)).rows.map(r=>r.table_name);const missingTables=requiredTables.filter(t=>!tables.includes(t));const adapterReady=typeof transport?.send==='function'&&typeof transport?.edit==='function'&&typeof transport?.inspect==='function'&&typeof evidence?.decorate==='function'&&typeof evidence?.verify==='function';return {status:database===expectedDatabase&&!missingTables.length&&adapterReady?'ready':'blocked',databaseMatches:database===expectedDatabase,missingTables,adapterReady};}finally{if(client)client.release();}}
+module.exports={preflightRelayV2,requiredTables};

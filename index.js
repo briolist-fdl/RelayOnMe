@@ -8,6 +8,7 @@ const {
 } = require("discord.js");
 
 const { maybeAddSupportMessage } = require("./src/shared/supportDevelopment");
+const { buildAbout } = require("./src/shared/about");
 
 const { initDb } = require("./initDb");
 const { parseCampfireMessage } = require("./parsers/campfireParser");
@@ -810,6 +811,11 @@ client.on("messageCreate", async (message) => {
 client.on("interactionCreate", async (interaction) => {
   try {
     if (!interaction.isChatInputCommand()) return;
+    if (interaction.commandName === "about") {
+      const about = buildAbout();
+      await interaction.reply({ content: about.content });
+      return;
+    }
     if (interaction.commandName !== "relay") return;
 
     const group = interaction.options.getSubcommandGroup(false);

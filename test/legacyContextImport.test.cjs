@@ -1,0 +1,12 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+const {createHash}=require('node:crypto'); const {planLegacyContextImport}=require('../src/identity/planLegacyContextImport'); const {migrationDryRun}=require('../src/identity/migrationDryRun'); const fixture=require('./fixtures/relay-migration.synthetic.json');
+const hash=v=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
+const input=()=>{const x=structuredClone(fixture);x.contexts=[{relay_key:x.messages[0].relay_key,relay_config_id:1,creator_discord_user_id:'old',group_role_ids:['old-role']}];return x;};
+const scope=x=>migrationDryRun(x).report.contexts[0].scope;
+const state=x=>({version:2,events:[{scope_id:scope(x),event_id:'event'}],contexts:[],roles:[],imports:[]});
+const att=(x,more={})=>({row:1,snapshotHash:hash(x.contexts[0]),scopeId:scope(x),eventId:'event',guildId:'guild',knownRoleIds:['role'],roleIds:['role'],creator:{namespace:'generic',id:'creator',sourceRef:'record',verified:true},...more});
+test('verified attestation proposes scoped context',()=>{const x=input(),p=planLegacyContextImport(x,state(x),[att(x)]);assert.equal(p.status,'planned');assert.equal(p.operations.contexts[0].creator_id,'creator');assert.equal(p.operations.roles[0].role_id,'role');});
+test('legacy context alone is held',()=>{const x=input(),p=planLegacyContextImport(x,state(x),[]);assert.equal(p.status,'blocked');assert.equal(p.rows[0].reason,'missing_attestation');});
+test('changed evidence, creator or role blocks',()=>{const x=input();for(const more of [{snapshotHash:'a'.repeat(64)},{creator:{verified:false}},{roleIds:['unknown']}])assert.equal(planLegacyContextImport(x,state(x),[att(x,more)]).status,'blocked');});
+test('matching provenance is replay safe',()=>{const x=input(),first=planLegacyContextImport(x,state(x),[att(x)]),e={...state(x),contexts:first.operations.contexts,roles:first.operations.roles,imports:first.operations.imports},again=planLegacyContextImport(x,e,[att(x)]);assert.equal(again.status,'planned');assert.equal(again.rows[0].status,'already_imported');});

@@ -19,9 +19,6 @@ if (!clientId) {
   throw new Error("Missing DISCORD_CLIENT_ID or CLIENT_ID");
 }
 
-if (!guildId) {
-  throw new Error("Missing GUILD_ID or DISCORD_GUILD_ID");
-}
 
 const relayCommand = new SlashCommandBuilder()
   .setName("relay")
@@ -247,7 +244,11 @@ const relayCommand = new SlashCommandBuilder()
       )
   );
 
-const commands = [relayCommand.toJSON()];
+const aboutCommand = new SlashCommandBuilder()
+  .setName("about")
+  .setDescription("Show RelayOnMe information and support channel.");
+
+const commands = [relayCommand.toJSON(), aboutCommand.toJSON()];
 
 const rest = new REST({ version: "10" }).setToken(token);
 
