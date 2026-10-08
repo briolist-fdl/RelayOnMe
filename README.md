@@ -4,6 +4,12 @@ RelayOnMe is a Discord bot for relaying structured messages from one channel to 
 
 It is built for communities that need controlled message forwarding between channels, with support for Campfire meetup messages and creator-specific role mentions.
 
+## Add RelayOnMe to a server
+
+[Install RelayOnMe](https://discord.com/oauth2/authorize?client_id=1521169153975779408&scope=bot%20applications.commands&permissions=84992&integration_type=0)
+
+The link requests Guild Install with permission to view channels, read message history, send messages and embed links. A server administrator configures source and target channels with `/relay config add`.
+
 ## Features
 
 * Relay messages from a source channel to a target channel
