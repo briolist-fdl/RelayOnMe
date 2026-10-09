@@ -9,6 +9,7 @@ const {
 
 const { maybeAddSupportMessage } = require("./src/shared/supportDevelopment");
 const { buildAbout } = require("./src/shared/about");
+const { buildRelayDemo } = require("./src/demos/relayDemos");
 
 const { initDb } = require("./initDb");
 const { parseCampfireMessage } = require("./parsers/campfireParser");
@@ -820,6 +821,28 @@ client.on("interactionCreate", async (interaction) => {
 
     const group = interaction.options.getSubcommandGroup(false);
     const subcommand = interaction.options.getSubcommand();
+
+    if (!group && subcommand === "demo") {
+      const example = getStringOption(interaction, "example");
+      const template = getStringOption(interaction, "template");
+      const addText = getStringOption(interaction, "add_text");
+      let preview;
+      try {
+        preview = buildRelayDemo(example, {
+          ...(template == null ? {} : { template }),
+          ...(addText == null ? {} : { suffix: addText }),
+        });
+      } catch (error) {
+        if (!(error instanceof TypeError || error instanceof RangeError)) throw error;
+        await interaction.reply({
+          content: "That output could not be previewed. Use supported placeholders and keep the result under 1,900 characters. Supported: {title}, {summary}, {url}, {author}, {categories}, {original_content}, {starts}, {ends}, {location}, {role_mentions}.",
+          flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] },
+        });
+        return;
+      }
+      await interaction.reply({ ...preview, flags: MessageFlags.Ephemeral });
+      return;
+    }
 
     if (!group && subcommand === "status") {
       await handleRelayStatus(interaction);

@@ -30,6 +30,29 @@ const relayCommand = new SlashCommandBuilder()
       .setDescription("Show RelayOnMe runtime and storage status.")
   )
 
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("demo")
+      .setDescription("Preview selective relays and custom output privately.")
+      .addStringOption((option) =>
+        option.setName("example").setDescription("Choose a sample use case.").setRequired(true)
+          .addChoices(
+            { name: "Community news (RSS)", value: "news" },
+            { name: "Remote job openings (RSS)", value: "jobs" },
+            { name: "Stable releases (webhook)", value: "releases" },
+            { name: "Local community events", value: "events" }
+          )
+      )
+      .addStringOption((option) =>
+        option.setName("template").setDescription("Optional output: {title}, {summary}, {url}, {author}, {categories}.")
+          .setMaxLength(1500)
+      )
+      .addStringOption((option) =>
+        option.setName("add_text").setDescription("Optional Markdown text block after the output.")
+          .setMaxLength(500)
+      )
+  )
+
   .addSubcommandGroup((group) =>
     group
       .setName("config")

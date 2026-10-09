@@ -37,6 +37,26 @@ RelayOnMe uses one main slash command:
 
 Shows RelayOnMe runtime and storage status.
 
+### Private demos and output preview
+
+```text
+/relay demo example:news
+/relay demo example:jobs
+/relay demo example:releases
+/relay demo example:events
+```
+
+Each example shows which synthetic source posts pass its filter and how the
+selected post looks. Optional `template` replaces the sample output, and
+`add_text` appends a Discord Markdown block. For example, a template can use
+`**{title}**` followed by `<{url}>`. Supported fields also include `{summary}`,
+`{author}`, `{categories}`, `{original_content}`, `{starts}`, `{ends}`,
+`{location}`, and `{role_mentions}`. Missing values render as empty text.
+
+Demos are private, never ping roles, and do not create subscriptions. RSS polling
+and inbound webhooks are still under development. See
+[the product roadmap](docs/product-roadmap.md) for release gates.
+
 ### Relay configuration
 
 ```text
