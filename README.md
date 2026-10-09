@@ -6,9 +6,9 @@ It is built for communities that need controlled message forwarding between chan
 
 ## Add RelayOnMe to a server
 
-[Install RelayOnMe](https://discord.com/oauth2/authorize?client_id=1521169153975779408&scope=bot%20applications.commands&permissions=84992&integration_type=0)
+[Install RelayOnMe](https://discord.com/oauth2/authorize?client_id=1521169153975779408&scope=bot%20applications.commands&permissions=536955904&integration_type=0)
 
-The link requests Guild Install with permission to view channels, read message history, send messages and embed links. A server administrator configures source and target channels with `/relay config add`.
+The link requests Guild Install with permission to view channels, read message history, send messages, embed links and manage webhooks. RelayOnMe needs Manage Webhooks in target channels to find or create its relay webhook. A server administrator configures source and target channels with `/relay config add` and can restrict the bot role to those channels. Administrator permission is not required.
 
 ## Features
 
@@ -149,6 +149,7 @@ RelayOnMe needs the Discord permissions required to:
 
 * read source channels
 * send messages in target channels
+* manage webhooks in target channels to find or create the relay webhook
 * use slash commands
 * mention configured roles when applicable
 
