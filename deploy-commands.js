@@ -53,6 +53,12 @@ const relayCommand = new SlashCommandBuilder()
       )
   )
 
+  .addSubcommand((subcommand) => subcommand
+    .setName('preview').setDescription('Privately test a configured message relay with sample text.')
+    .addChannelOption((option) => option.setName('source_channel').setDescription('Configured message source.').setRequired(true).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addStringOption((option) => option.setName('text').setDescription('Sample post to test against your filter and output.').setRequired(true).setMaxLength(1500))
+    .addUserOption((option) => option.setName('author').setDescription('Optional sample author, especially for bot-only relays.'))
+  )
   .addSubcommandGroup((group) =>
     group
       .setName("config")
@@ -70,6 +76,9 @@ const relayCommand = new SlashCommandBuilder()
               .addChoices({
                 name: "Campfire",
                 value: "campfire",
+              }, {
+                name: "Discord messages (filtered)",
+                value: "messages",
               })
           )
           .addChannelOption((option) =>
@@ -98,6 +107,11 @@ const relayCommand = new SlashCommandBuilder()
               .setDescription("Fallback role to mention if no creator-specific Campfire rule matches.")
               .setRequired(false)
           )
+          .addStringOption((option) => option.setName('include').setDescription('Messages: match any phrase; separate phrases with |.').setMaxLength(500))
+          .addStringOption((option) => option.setName('exclude').setDescription('Messages: skip any matching phrase; separate with |.').setMaxLength(500))
+          .addUserOption((option) => option.setName('author').setDescription('Messages: accept only this user or bot.'))
+          .addStringOption((option) => option.setName('template').setDescription('Messages: output template, e.g. **{title}** or {original_content}.').setMaxLength(1500))
+          .addStringOption((option) => option.setName('add_text').setDescription('Messages: append an optional Discord Markdown block.').setMaxLength(500))
       )
 
       .addSubcommand((subcommand) =>

@@ -205,6 +205,8 @@ async function main() {
       null));
     phase = 'exercise-preflight';
     report.checks.push(...await require('./relay-preflight-checks.cjs').exercisePreflight(config));
+    phase = 'exercise-discord-message-relay';
+    report.checks.push(...await require('./discord-message-relay-checks.cjs').exerciseDiscordMessageRelay(config));
     report.passed = report.checks.length;
     phase = 'cleanup';
   } finally {

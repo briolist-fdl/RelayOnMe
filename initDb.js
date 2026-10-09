@@ -179,6 +179,10 @@ async function initDb() {
     );
   `);
 
+  await pool.query(`ALTER TABLE relay_configs
+    ADD COLUMN IF NOT EXISTS content_filter JSONB NOT NULL DEFAULT '{}'::JSONB,
+    ADD COLUMN IF NOT EXISTS output_config JSONB NOT NULL DEFAULT '{}'::JSONB;`);
+
   console.log("Database initialized");
 }
 

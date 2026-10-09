@@ -10,6 +10,11 @@ const {
 const { maybeAddSupportMessage } = require("./src/shared/supportDevelopment");
 const { buildAbout } = require("./src/shared/about");
 const { buildRelayDemo } = require("./src/demos/relayDemos");
+const { prepareDiscordPost } = require("./src/sources/prepareDiscordPost");
+const { relayDiscordPost } = require("./src/relay/relayDiscordPost");
+const { compileRelayFilter } = require("./src/sources/matchRelayFilter");
+const { compileRelayOutput } = require("./src/output/renderRelayOutput");
+const { pool } = require("./db");
 
 const { initDb } = require("./initDb");
 const { parseCampfireMessage } = require("./parsers/campfireParser");
@@ -40,12 +45,14 @@ const client = new Client({
   ],
 });
 
+let databaseReady = false;
 client.once("clientReady", async () => {
   console.log(`Login success as ${client.user.tag}`);
-  console.log("RelayOnMe build: campfire-creator-roles-2026-06-30");
+  console.log("RelayOnMe build: generic-discord-message-relays");
 
   try {
     await initDb();
+    databaseReady = true;
   } catch (error) {
     console.error("Database init failed:", error);
   }
@@ -185,7 +192,11 @@ function formatRelayConfig(config, index = null) {
     `Parser: ${config.parser}`,
     `Source: <#${config.source_channel_id}>`,
     `Target: <#${config.target_channel_id}>`,
-    `Default Campfire group role: ${formatCampfireGroupRole(config)}`,
+    ...(config.parser === 'campfire'
+      ? [`Default Campfire group role: ${formatCampfireGroupRole(config)}`]
+      : [`Include phrases: ${config.content_filter?.includeKeywords?.length || 0}; exclude phrases: ${config.content_filter?.excludeKeywords?.length || 0}`,
+        `Author restriction: ${config.content_filter?.allowedAuthors?.length ? 'yes' : 'no'}`,
+        `Output: ${config.output_config?.template && config.output_config.template !== '{original_content}' ? 'custom template' : 'original text'}`]),
     `Enabled: ${formatEnabled(config.enabled)}`,
   ].join("\n");
 }
@@ -301,10 +312,12 @@ async function handleRelayStatus(interaction) {
     [
       "**RelayOnMe status**",
       "",
-      "Storage: connected",
+      `Storage: ${databaseReady ? "ready" : "initializing or unavailable"}`,
       "Mode: database-config",
       "Commands: grouped-config",
       "Campfire creator roles: supported",
+      "Discord message relays: filters, templates and private preview",
+      "Direct RSS and inbound webhooks: under development",
     ].join("\n")
   );
 }
@@ -353,7 +366,12 @@ async function handleRelayConfigAdd(interaction) {
 
   const normalizedParser = parser.toLowerCase();
 
-  if (normalizedParser !== "campfire") {
+  if (normalizedParser === 'campfire' && ['include', 'exclude', 'template', 'add_text'].some(name => getStringOption(interaction, name) != null)) {
+    await replyEphemeral(interaction, "These filter and output options currently apply to Messages relays. Campfire keeps its existing add-on behavior.");
+    return;
+  }
+
+  if (!["campfire", "messages"].includes(normalizedParser)) {
     await replyEphemeral(interaction, `Unsupported parser: ${parser}`);
     return;
   }
@@ -363,13 +381,58 @@ async function handleRelayConfigAdd(interaction) {
     sourceChannel.id
   );
 
+  if (sourceChannel.id === targetChannel.id) {
+    await replyEphemeral(interaction, "Choose different source and target channels.");
+    return;
+  }
+  if (existingConfig && existingConfig.parser !== normalizedParser) {
+    await replyEphemeral(interaction, "This source already uses another adapter. Choose a different source to preserve its relay history.");
+    return;
+  }
+  let contentFilter = null, outputConfig = null;
+  if (normalizedParser === "messages") {
+    if (groupRole) {
+      await replyEphemeral(interaction, "The fallback group role is for Campfire. Message relays currently send without notifications.");
+      return;
+    }
+    const phrases = name => (getStringOption(interaction, name) || '').split('|').map(value => value.trim()).filter(Boolean);
+    contentFilter = { includeKeywords: phrases('include'), excludeKeywords: phrases('exclude') };
+    const author = getUserOption(interaction, 'author');
+    if (author) contentFilter.allowedAuthors = [author.id];
+    outputConfig = {
+      template: getStringOption(interaction, 'template') ?? '{original_content}',
+      suffix: getStringOption(interaction, 'add_text') ?? '',
+    };
+    try { compileRelayFilter(contentFilter); compileRelayOutput(outputConfig); }
+    catch {
+      await replyEphemeral(interaction, "Invalid filter or output template. Use supported placeholders such as {original_content}, {title}, {summary}, {url} and {author}.");
+      return;
+    }
+    const schema = await pool.query("SELECT to_regclass('relay_identity_v2.source_observations') AS ready");
+    if (!schema.rows[0]?.ready) {
+      await replyEphemeral(interaction, "Message relays require the v2 delivery schema. Contact the bot operator.");
+      return;
+    }
+    const me = interaction.guild.members.me;
+    const sourcePermissions = sourceChannel.permissionsFor(me);
+    const targetPermissions = targetChannel.permissionsFor(me);
+    if (!sourcePermissions?.has([PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.ReadMessageHistory]) ||
+        !targetPermissions?.has([PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages,
+          PermissionsBitField.Flags.ReadMessageHistory])) {
+      await replyEphemeral(interaction, "The bot needs View Channel and Read Message History in both channels, and Send Messages in the target.");
+      return;
+    }
+  }
+
   const savedConfig = await saveRelayConfig({
     guildId: interaction.guildId,
     sourceChannelId: sourceChannel.id,
     targetChannelId: targetChannel.id,
     parser: normalizedParser,
-    enabled: true,
+    enabled: normalizedParser === 'campfire',
     campfireGroupRoleId: groupRole?.id ?? null,
+    contentFilter,
+    outputConfig,
   });
 
   const action = existingConfig ? "updated" : "created";
@@ -382,8 +445,9 @@ async function handleRelayConfigAdd(interaction) {
       `Parser: ${savedConfig.parser}`,
       `Source: <#${savedConfig.source_channel_id}>`,
       `Target: <#${savedConfig.target_channel_id}>`,
-      `Default Campfire group role: ${formatCampfireGroupRole(savedConfig)}`,
+      ...(normalizedParser === 'campfire' ? [`Default Campfire group role: ${formatCampfireGroupRole(savedConfig)}`] : []),
       `Enabled: ${formatEnabled(savedConfig.enabled)}`,
+      ...(normalizedParser === 'messages' ? ["Test with /relay preview, then activate with /relay config enable."] : []),
     ].join("\n")
   );
 
@@ -767,9 +831,16 @@ async function handleCampfireCreatorRoleRemove(interaction) {
 
 client.on("messageCreate", async (message) => {
   try {
+    if (!databaseReady) return;
     const config = await getRelayConfigBySourceChannel(message.channel.id);
 
     if (!config) return;
+
+    if (config.parser === 'messages') {
+      const outcome = await relayDiscordPost({ pool, client, message, config });
+      console.log(`Message relay outcome: ${outcome.status}`);
+      return;
+    }
 
     console.log(
       `MESSAGE: ${message.author.tag} | ${message.channel.id} | ${message.content}`
@@ -806,6 +877,19 @@ client.on("messageCreate", async (message) => {
     });
   } catch (error) {
     console.error("messageCreate handler failed:", error);
+  }
+});
+
+client.on('messageUpdate', async (_, message) => {
+  try {
+    if (!databaseReady) return;
+    if (message.partial) message = await message.fetch();
+    const config = await getRelayConfigBySourceChannel(message.channel.id);
+    if (config?.parser !== 'messages') return;
+    const outcome = await relayDiscordPost({ pool, client, message, config });
+    console.log(`Message relay update outcome: ${outcome.status}`);
+  } catch (error) {
+    console.error('Message relay update failed:', error);
   }
 });
 
@@ -846,6 +930,29 @@ client.on("interactionCreate", async (interaction) => {
 
     if (!group && subcommand === "status") {
       await handleRelayStatus(interaction);
+      return;
+    }
+
+    if (!databaseReady) {
+      await replyEphemeral(interaction, "Storage is initializing or unavailable. Try again shortly.");
+      return;
+    }
+
+    if (!group && subcommand === "preview") {
+      if (!(await requireRelayConfigPermission(interaction))) return;
+      const source = getChannelOption(interaction, 'source_channel');
+      const config = await getRelayConfigByGuildAndSourceChannel(interaction.guildId, source.id);
+      if (!config || config.parser !== 'messages') {
+        await replyEphemeral(interaction, "Create a Messages relay for this source first.");
+        return;
+      }
+      const author = getUserOption(interaction, 'author') || interaction.user;
+      const preview = prepareDiscordPost({ content: getStringOption(interaction, 'text'),
+        author, embeds: [], url: '' }, config);
+      await interaction.reply({ flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] },
+        embeds: [{ title: `Relay preview: ${preview.status}`, description: preview.status === 'selected'
+          ? preview.payload.content : preview.reason,
+          footer: { text: 'Private preview. No message sent to the target channel.' } }] });
       return;
     }
 

@@ -68,7 +68,7 @@ async function deliverRelay(pool, { scopeId, guildId, eventId, sourceMessageId, 
         if (controller.signal.aborted) throw Error('Cancelled before dispatch');
         return transport[operation === 'create' ? 'send' : 'edit']({
           targetChannelId: scope.target_channel_id, messageId: existing?.target_message_id || null,
-          attemptId, scopeId, eventId, sourceMessageId,
+          attemptId, scopeId, eventId, sourceMessageId, operation,
           payload, notify: false, signal: controller.signal,
         });
       }).then(result => ({ result }), error => ({ error }));

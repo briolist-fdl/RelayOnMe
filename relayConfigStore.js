@@ -52,6 +52,8 @@ async function saveRelayConfig({
   parser,
   enabled = true,
   campfireGroupRoleId = null,
+  contentFilter = null,
+  outputConfig = null,
 }) {
   const result = await pool.query(
     `
@@ -62,15 +64,19 @@ async function saveRelayConfig({
       parser,
       enabled,
       campfire_group_role_id,
+      content_filter,
+      output_config,
       updated_at
     )
-    VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7::JSONB, '{}'::JSONB), COALESCE($8::JSONB, '{}'::JSONB), NOW())
     ON CONFLICT (source_channel_id)
     DO UPDATE SET
       guild_id = EXCLUDED.guild_id,
       target_channel_id = EXCLUDED.target_channel_id,
       parser = EXCLUDED.parser,
       enabled = EXCLUDED.enabled,
+      content_filter = COALESCE($7::JSONB, relay_configs.content_filter),
+      output_config = COALESCE($8::JSONB, relay_configs.output_config),
       campfire_group_role_id = COALESCE(
         EXCLUDED.campfire_group_role_id,
         relay_configs.campfire_group_role_id
@@ -78,7 +84,9 @@ async function saveRelayConfig({
       updated_at = NOW()
     RETURNING *;
     `,
-    [guildId, sourceChannelId, targetChannelId, parser, enabled, campfireGroupRoleId]
+    [guildId, sourceChannelId, targetChannelId, parser, enabled, campfireGroupRoleId,
+      contentFilter == null ? null : JSON.stringify(contentFilter),
+      outputConfig == null ? null : JSON.stringify(outputConfig)]
   );
 
   return result.rows[0];

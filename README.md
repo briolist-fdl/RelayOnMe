@@ -70,6 +70,14 @@ and inbound webhooks are still under development. See
 
 These commands manage source-to-target relay configurations.
 
+Choose **Discord messages (filtered)** to forward ordinary posts or output from
+another RSS/webhook bot. Optional `include`/`exclude` phrases are separated with
+`|`, `author` restricts the source user or bot, and `template`/`add_text` customize
+the text with Discord Markdown. Messages routes are saved disabled: test with
+`/relay preview source_channel:<source> text:<sample>`, then activate with
+`/relay config enable`. Edits update the same target post; repeated events do not
+send another copy. See [live Discord relay setup](docs/live-discord-relays.md).
+
 `/relay config add` creates or updates a relay from one source channel to one target channel.
 
 Optional configuration can include a fallback group role to mention when no more specific Campfire creator rule matches.
