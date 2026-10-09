@@ -813,7 +813,7 @@ client.on("interactionCreate", async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName === "about") {
       const about = buildAbout();
-      await interaction.reply({ content: about.content });
+      await interaction.reply({ content: about.content, flags: MessageFlags.Ephemeral });
       return;
     }
     if (interaction.commandName !== "relay") return;
