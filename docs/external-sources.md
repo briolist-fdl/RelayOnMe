@@ -20,5 +20,12 @@ for common cases such as one selected RSS category, posts by a specific author,
 or webhooks marked `announcement`, while avoiding broad keyword guessing.
 
 The next integration step is a persisted source configuration and a bounded RSS
-poller or signed webhook endpoint. Each adapter must also assign a stable source
-item ID and monotonically ordered revision before it invokes the delivery core.
+poller or signed webhook endpoint. The RSS/Atom adapter now parses documents
+with a bounded XML parser and returns only normalized items with a stable feed
+ID (or a link when no ID exists). `selectFeedItems` applies the common filter
+and records why each non-selected item was held. It performs no network request
+or Discord delivery.
+
+Each adapter must still assign a monotonically ordered revision and persist its
+cursor before it invokes the delivery core. That is the next integration step,
+along with persisted source configuration.
