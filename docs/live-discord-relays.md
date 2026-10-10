@@ -9,7 +9,7 @@ case-insensitive and any exclusion wins. `author` restricts the source to a
 particular user or bot. `template` replaces the output, and `add_text` appends a
 Markdown block. Example: `{original_content}` followed by `**Community update**`.
 
-New and edited Messages configurations are saved **disabled**. Run
+New and edited message configurations are saved **disabled**. Run
 `/relay preview source_channel:<source> text:<sample>` to test selection and
 output privately. Supply the optional sample `author` when testing an author
 restriction. Then use `/relay config enable` to start listening for new posts.
@@ -27,16 +27,18 @@ holds uncertain outcomes or missing targets rather than blindly sending again.
 If an edit stops matching the filter, no further update is sent; the prior target
 is retained. Config updates affect future source events, not already posted text.
 
-## Brio Bots live example
+## BrioBots live example
 
-Existing demo source: `rom-source` (1557544582516969542).
-Existing demo target: `rom-destination` (1557544643145629799).
+Live generic demo: [rom-filter-source](https://discord.com/channels/1550119459891576852/1558258687032696952)
+to [rom-filter-output](https://discord.com/channels/1550119459891576852/1558258733635739658).
 
-An admin can add a Messages route with `include:release|announcement` and
-`exclude:beta`, and a Markdown `add_text`. Preview a matching release and a beta
-release, then enable. Post a real matching source message, a nonmatching message,
-and edit the matching message. The destination should contain one updated post.
-These steps are a live verification procedure; they have not yet been performed.
+Send `alpha hello` in the source to see it forwarded with an extra Markdown
+text block. Send `alpha omega` to see it skipped. Editing the matching source
+updates its existing output. The server owner confirmed the live test on
+10 October 2026. Channel cleanup is configured separately by the server owner.
+
+The existing Campfire example uses a separate channel pair and the RelayOnMe
+Campfire add-on. This generic demo does not change its configuration.
 
 The initial production database migration was already applied separately.
 Startup adds two default-empty JSONB configuration columns. Discord message

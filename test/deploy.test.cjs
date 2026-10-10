@@ -16,6 +16,8 @@ async function simulate(extraEnv) {
   const discord = {
     SlashCommandBuilder: function () { return builder(); },
     ChannelType: { GuildText: 0, GuildAnnouncement: 5 },
+    InteractionContextType: { Guild: 0 },
+    ApplicationIntegrationType: { GuildInstall: 0 },
     REST: class { setToken() { return this; } async put(route) { calls.push(route); } },
     Routes: { applicationCommands: id => `global/${id}`, applicationGuildCommands: (id, guild) => `guild/${id}/${guild}` },
   };

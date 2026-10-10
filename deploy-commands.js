@@ -5,6 +5,8 @@ const {
   Routes,
   SlashCommandBuilder,
   ChannelType,
+  InteractionContextType,
+  ApplicationIntegrationType,
 } = require("discord.js");
 
 const token = process.env.DISCORD_TOKEN;
@@ -285,7 +287,10 @@ const aboutCommand = new SlashCommandBuilder()
   .setName("about")
   .setDescription("Show RelayOnMe information and support channel.");
 
-const commands = [relayCommand.toJSON(), aboutCommand.toJSON()];
+const commands = [relayCommand, aboutCommand].map(command => command
+  .setContexts(InteractionContextType.Guild)
+  .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
+  .toJSON());
 
 const rest = new REST({ version: "10" }).setToken(token);
 
@@ -319,7 +324,8 @@ async function deployCommands() {
   );
 
   await rest.put(route, {
-    body: commands,
+    body: deployGlobalCommands ? commands
+      : commands.map(({ contexts, integration_types, ...command }) => command),
   });
 
   console.log("RelayOnMe slash commands deployed.");

@@ -61,6 +61,10 @@ test('real Discord command builder serializes four demo choices and bounded cust
   });
   await new Promise(resolve => setImmediate(resolve));
   const demo = commands.find(command => command.name === 'relay').options.find(option => option.name === 'demo');
+  for (const command of commands) {
+    assert.deepEqual(Array.from(command.contexts), [discord.InteractionContextType.Guild]);
+    assert.deepEqual(Array.from(command.integration_types), [discord.ApplicationIntegrationType.GuildInstall]);
+  }
   assert.equal(demo.options[0].choices.length, 4);
   assert.equal(demo.options[1].max_length, 1500);
   assert.equal(demo.options[2].max_length, 500);

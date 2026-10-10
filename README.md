@@ -1,8 +1,8 @@
 # RelayOnMe
 
-RelayOnMe is a Discord bot for relaying structured messages from one channel to another.
+RelayOnMe forwards selected Discord posts from one channel to another.
 
-It is built for communities that need controlled message forwarding between channels, with support for Campfire meetup messages and creator-specific role mentions.
+Choose words or authors to include, exclude unwanted posts, and customize the output with your own text. The RelayOnMe Campfire add-on also supports meetup messages and creator-role rules.
 
 ## Add RelayOnMe to a server
 
@@ -12,7 +12,10 @@ The link requests Guild Install with permission to view channels, read message h
 
 ## Features
 
-* Relay messages from a source channel to a target channel
+* Filter source messages by words, phrases or author
+* Relay selected messages to another channel in the same server
+* Customize output with templates and an extra Markdown text block
+* Update the existing output when a matching source message is edited
 * Configure relays per Discord server
 * Enable, disable, inspect, list, or remove relay configurations
 * Campfire-specific message parsing
@@ -73,7 +76,7 @@ These commands manage source-to-target relay configurations.
 Choose **Discord messages (filtered)** to forward ordinary posts or output from
 another RSS/webhook bot. Optional `include`/`exclude` phrases are separated with
 `|`, `author` restricts the source user or bot, and `template`/`add_text` customize
-the text with Discord Markdown. Messages routes are saved disabled: test with
+the text with Discord Markdown. Message routes are saved disabled: test with
 `/relay preview source_channel:<source> text:<sample>`, then activate with
 `/relay config enable`. Edits update the same target post; repeated events do not
 send another copy. See [live Discord relay setup](docs/live-discord-relays.md).
@@ -150,8 +153,9 @@ node deploy-commands.js
 
 For global registration, set `DEPLOY_GLOBAL_COMMANDS=true` explicitly. A guild ID is only required for guild registration. Registration changes Discord commands; it is not part of `npm test`.
 
-`/about` links by default to `#relayonme` in Brio Bots. The two optional Brio
-Bots variables may override that destination when both are valid Discord IDs.
+`/about` links by default to `#relayonme` in BrioBots. The two optional
+`BRIO_BOTS_GUILD_ID` and `BRIO_BOTS_ABOUT_CHANNEL_ID` variables may override
+that destination when both are valid Discord IDs.
 
 Start the bot:
 

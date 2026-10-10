@@ -6,7 +6,7 @@ const { compileRelayOutput } = require('../output/renderRelayOutput');
 // Synthetic examples: no external feed, webhook secret or Discord messages.
 const demos = {
   news: {
-    name: 'Selected news', source: 'RSS', description: 'Only community news; sponsored posts are excluded.',
+    name: 'Selected news', source: 'RSS', description: 'Only community news, sponsored posts are excluded.',
     filter: { includeCategories: ['community'], excludeKeywords: ['sponsored'] },
     output: { prefix: '📰 **Community news**', template: '**{title}**\n{summary}\n<{url}>' },
     items: [
@@ -16,7 +16,7 @@ const demos = {
     ],
   },
   jobs: {
-    name: 'Relevant job openings', source: 'RSS', description: 'Only remote developer jobs; internships are excluded.',
+    name: 'Relevant job openings', source: 'RSS', description: 'Only remote developer jobs, internships are excluded.',
     filter: { includeCategories: ['remote'], includeKeywords: ['developer'], excludeKeywords: ['internship'] },
     output: { prefix: '💼 **New remote opportunity**', template: '**{title}**\n{summary}\nApply: <{url}>', suffix: '*Shared by the community job feed.*' },
     items: [
@@ -26,7 +26,7 @@ const demos = {
     ],
   },
   releases: {
-    name: 'Stable releases', source: 'Webhook', description: 'Release events pass; prereleases and issue notifications are skipped.',
+    name: 'Stable releases', source: 'Webhook', description: 'Release events pass, prereleases and issue notifications are skipped.',
     filter: { includeCategories: ['release'], excludeCategories: ['prerelease'] },
     output: { prefix: '🚀 **A new release is available**', template: '**{title}**\n{summary}\nRelease notes: <{url}>' },
     items: [
@@ -36,7 +36,7 @@ const demos = {
     ],
   },
   events: {
-    name: 'Local events', source: 'Community add-on', description: 'Local public events pass; private events are skipped.',
+    name: 'Local events', source: 'Community add-on', description: 'Local public events pass, private events are skipped.',
     filter: { includeCategories: ['local'], excludeCategories: ['private'] },
     output: { prefix: '📍 **Upcoming community activity**', template: '**{title}**\n{starts} · {location}\n<{url}>', suffix: '**Bring a friend!**' },
     items: [
@@ -56,12 +56,10 @@ function buildRelayDemo(id, override = {}) {
   const config = { ...demo.output, ...override, roleIds: [] }; // Previews never ping.
   const output = compileRelayOutput(config).render(selected[0].item);
   return {
-    embeds: [{ title: `RelayOnMe demo: ${demo.name}`, description: demo.description,
-      fields: [{ name: 'Sample source', value: `${demo.source} · synthetic examples` },
-        { name: 'Filter results', value: results.map(result => `${result.matched ? '✓ Selected' : '— Skipped'}: ${result.item.title}${result.matched ? '' : ` (${result.reason})`}`).join('\n') },
-        { name: 'Output preview', value: output.content.length <= 1024 ? output.content : output.content.slice(0, 1000) + '\n…' },
-        { name: 'Availability', value: 'Preview only. External source polling and webhook ingestion are under development.' }],
-      footer: { text: 'Private preview — no subscription created and no roles notified.' } }],
+    embeds: [{ title: demo.name, description: demo.description,
+      fields: [{ name: 'Before', value: results.map(result => `${result.matched ? '✓' : '✗'} ${result.item.title}`).join('\n') },
+        { name: 'After', value: output.content.length <= 1024 ? output.content : output.content.slice(0, 1000) + '\n…' }],
+      footer: { text: 'Sample messages. Only you can see this.' } }],
     allowedMentions: { parse: [] },
   };
 }

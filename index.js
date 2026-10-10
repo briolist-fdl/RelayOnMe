@@ -367,7 +367,7 @@ async function handleRelayConfigAdd(interaction) {
   const normalizedParser = parser.toLowerCase();
 
   if (normalizedParser === 'campfire' && ['include', 'exclude', 'template', 'add_text'].some(name => getStringOption(interaction, name) != null)) {
-    await replyEphemeral(interaction, "These filter and output options currently apply to Messages relays. Campfire keeps its existing add-on behavior.");
+    await replyEphemeral(interaction, "These filter and output options apply to message relays. Campfire uses the RelayOnMe Campfire add-on.");
     return;
   }
 
@@ -419,7 +419,7 @@ async function handleRelayConfigAdd(interaction) {
     if (!sourcePermissions?.has([PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.ReadMessageHistory]) ||
         !targetPermissions?.has([PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages,
           PermissionsBitField.Flags.ReadMessageHistory])) {
-      await replyEphemeral(interaction, "The bot needs View Channel and Read Message History in both channels, and Send Messages in the target.");
+      await replyEphemeral(interaction, "The bot needs permission to view both channels and read their history, and to send messages in the target.");
       return;
     }
   }
@@ -943,16 +943,27 @@ client.on("interactionCreate", async (interaction) => {
       const source = getChannelOption(interaction, 'source_channel');
       const config = await getRelayConfigByGuildAndSourceChannel(interaction.guildId, source.id);
       if (!config || config.parser !== 'messages') {
-        await replyEphemeral(interaction, "Create a Messages relay for this source first.");
+        await replyEphemeral(interaction, "Create a message relay for this source first.");
         return;
       }
       const author = getUserOption(interaction, 'author') || interaction.user;
       const preview = prepareDiscordPost({ content: getStringOption(interaction, 'text'),
         author, embeds: [], url: '' }, config);
+      const reasons = {
+        excluded_keyword: 'It contains a word excluded by this relay.',
+        keyword_not_included: "It doesn't contain a word this relay looks for.",
+        author_not_allowed: 'This relay only forwards posts from selected authors.',
+        missing_link: 'This relay requires a link.',
+        excluded_category: 'Its category is excluded by this relay.',
+        category_not_included: "Its category isn't selected for this relay.",
+      };
       await interaction.reply({ flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] },
-        embeds: [{ title: `Relay preview: ${preview.status}`, description: preview.status === 'selected'
-          ? preview.payload.content : preview.reason,
-          footer: { text: 'Private preview. No message sent to the target channel.' } }] });
+        embeds: [{ title: preview.status === 'selected' ? 'This would be forwarded'
+          : preview.status === 'invalid_output' ? 'The output needs adjusting' : 'This would be skipped',
+          description: preview.status === 'selected' ? preview.payload.content
+            : preview.status === 'invalid_output' ? 'Check the template and text length.'
+            : reasons[preview.reason] || "It doesn't match this relay's filters.",
+          footer: { text: 'Preview only.' } }] });
       return;
     }
 

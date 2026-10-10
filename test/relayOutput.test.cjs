@@ -31,15 +31,17 @@ test('all product demos show selection, rejection and output without starting ex
     const result = buildRelayDemo(id);
     assert.deepEqual(result.allowedMentions, { parse: [] });
     const embed = result.embeds[0];
-    assert.match(embed.fields[1].value, /✓ Selected/);
-    assert.match(embed.fields[1].value, /— Skipped/);
-    assert(embed.fields[2].value.length > 0);
-    assert.match(embed.fields[3].value, /under development/);
+    assert.match(embed.fields[0].value, /✓ /);
+    assert.match(embed.fields[0].value, /✗ /);
+    assert.equal(embed.fields[0].name, 'Before');
+    assert.equal(embed.fields[1].name, 'After');
+    assert(embed.fields[1].value.length > 0);
+    assert.match(embed.footer.text, /Sample messages/);
   }
   assert.throws(() => buildRelayDemo('toString'));
 });
 
 test('demo accepts a custom output template and extra Markdown block', () => {
   const result = buildRelayDemo('news', { template: '**{title}**', suffix: '> Read more in our community channel.' });
-  assert.match(result.embeds[0].fields[2].value, /Read more/);
+  assert.match(result.embeds[0].fields[1].value, /Read more/);
 });
