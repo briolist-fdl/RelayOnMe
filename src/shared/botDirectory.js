@@ -18,7 +18,7 @@ const BOTS = {
   },
 
   sap: {
-    name: 'Selective Auto Publisher',
+    name: 'SelectiveAutoPublisher',
     githubUrl: 'https://github.com/briolist-fdl/selective-auto-publisher',
     topggUrl: '',
     discordBotListUrl: '',
